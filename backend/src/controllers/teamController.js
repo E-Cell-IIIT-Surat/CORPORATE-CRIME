@@ -57,7 +57,8 @@ export const registerTeam = async (req, res) => {
       team
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("🔴 Register Error:", error);
+    res.status(500).json({ message: error.message || "Registration failed" });
   }
 };
 
@@ -70,7 +71,15 @@ export const teamLogin = async (req, res) => {
       return res.status(401).json({ message: "Team not found." });
     }
 
-    const isMatch = await bcrypt.compare(password, team.password);
+    // Try bcrypt first, fall back to plain text
+    let isMatch = false;
+    try {
+      isMatch = await bcrypt.compare(password, team.password);
+    } catch (bcryptErr) {
+      // If bcrypt fails, try plain text comparison
+      isMatch = password === team.password;
+    }
+
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -81,7 +90,8 @@ export const teamLogin = async (req, res) => {
       team
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("🔴 Login Error:", error);
+    res.status(500).json({ message: error.message || "Login failed" });
   }
 };
 
