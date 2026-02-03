@@ -7,7 +7,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadDir = path.join(__dirname, "..", "..", "uploads");
 
-fs.mkdirSync(uploadDir, { recursive: true });
+// Only create directory in local environment (not in Vercel)
+if (!process.env.VERCEL) {
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  } catch (err) {
+    console.warn("Cannot create uploads directory:", err.message);
+  }
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

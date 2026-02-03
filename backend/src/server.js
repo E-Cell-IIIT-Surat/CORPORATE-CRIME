@@ -19,7 +19,11 @@ const __dirname = path.dirname(__filename);
 
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+
+// Only serve uploads folder locally (not in Vercel)
+if (!process.env.VERCEL) {
+  app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+}
 
 // Handle JSON parsing errors
 app.use((err, req, res, next) => {

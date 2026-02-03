@@ -24,6 +24,7 @@ import {
 } from "../controllers/adminGameController.js";
 
 const router = express.Router();
+const useUpload = process.env.VERCEL ? (req, res, next) => next() : upload.single("image");
 
 router.post("/login", adminLogin);
 
@@ -32,14 +33,14 @@ router.get("/status", adminProtect, getGameStatus);
 router.post("/toggle", adminProtect, toggleGame);
 
 router.post("/location", adminProtect, createLocation);
-router.post("/question", adminProtect, upload.single("image"), createQuestion);
+router.post("/question", adminProtect, useUpload, createQuestion);
 router.get("/questions", adminProtect, getAllQuestions);
 router.delete("/question/:id", adminProtect, deleteQuestion);
 
 /* CLUE MANAGEMENT */
-router.post("/clue", adminProtect, upload.single("image"), createClue);
+router.post("/clue", adminProtect, useUpload, createClue);
 router.get("/clues", adminProtect, getAllClues);
-router.put("/clue/:id", adminProtect, upload.single("image"), updateClue);
+router.put("/clue/:id", adminProtect, useUpload, updateClue);
 router.delete("/clue/:id", adminProtect, deleteClue);
 
 /* TEAM MANAGEMENT */
