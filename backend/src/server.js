@@ -1,5 +1,4 @@
 import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -9,7 +8,8 @@ import scanRoutes from "./routes/scanRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import clueRoutes from "./routes/clueRoutes.js";
-dotenv.config();
+
+// Connect to MongoDB 
 connectDB();
 
 const app = express();
@@ -36,8 +36,15 @@ app.use((err, req, res, next) => {
 app.get("/", (req, res) => {
   res.send("QR Hunt Backend Running");
 });
+
 app.get("/api/health", (req, res) => {
-  res.json({ status: "OK", timestamp: new Date() });
+  res.json({ 
+    status: "OK", 
+    timestamp: new Date(),
+    mongoUri: process.env.MONGO_URI ? "Set" : "NOT SET",
+    jwtSecret: process.env.JWT_SECRET ? "Set" : "NOT SET",
+    env: process.env.NODE_ENV || "development"
+  });
 });
 app.use("/api/team", teamRoutes);
 app.use("/api/qr", scanRoutes);
