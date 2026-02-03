@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import path from "path";
@@ -8,6 +9,8 @@ import scanRoutes from "./routes/scanRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import clueRoutes from "./routes/clueRoutes.js";
+
+dotenv.config();
 
 // Connect to MongoDB 
 connectDB();
