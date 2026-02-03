@@ -1,3 +1,9 @@
 {
-  "version": 2
+  "version": 2,
+  "buildCommand": "echo 'Build complete'",
+  "env": {
+    "MONGO_URI": "@MONGO_URI",
+    "JWT_SECRET": "@JWT_SECRET",
+    "NODE_ENV": "production"
+  }
 }
