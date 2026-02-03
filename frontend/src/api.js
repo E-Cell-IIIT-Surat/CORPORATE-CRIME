@@ -3,7 +3,7 @@ import axios from 'axios';
 // Determine API base URL based on environment
 const API_BASE_URL = 
   process.env.NODE_ENV === 'production'
-    ? 'https://event-cyber-backend.vercel.app/api'
+    ? 'https://corporate-crime.vercel.app/api'
     : 'http://localhost:5000/api';
 
 const api = axios.create({
