@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signup Test</title>
+</head>
+<body>
+    <h1>Signup Test</h1>
+    <form id="form">
+        <input type="text" id="teamId" placeholder="Team ID" value="test-team-123" />
+        <input type="password" id="password" placeholder="Password" value="password123" />
+        <button type="submit">Signup</button>
+    </form>
+    <pre id="output"></pre>
+    <script>
+        document.getElementById('form').onsubmit = async (e) => {
+            e.preventDefault();
+            const output = document.getElementById('output');
+            const teamId = document.getElementById('teamId').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                output.textContent = '📨 Sending request to http://localhost:5000/api/team/register\n';
+                output.textContent += `Data: ${JSON.stringify({teamId, password: '***'})}\n\n`;
+                
+                const response = await fetch('http://localhost:5000/api/team/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({teamId, password})
+                });
+                
+                const data = await response.json();
+                output.textContent += `✅ Status: ${response.status}\n`;
+                output.textContent += `Response:\n${JSON.stringify(data, null, 2)}`;
+            } catch (err) {
+                output.textContent += `❌ Error: ${err.message}\n`;
+                output.textContent += err.stack;
+            }
+        };
+    </script>
+</body>
+</html>

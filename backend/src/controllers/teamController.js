@@ -1,0 +1,158 @@
+import bcrypt from "bcryptjs";
+import Team from "../models/Team.js";
+import Location from "../models/Location.js";
+import generateToken from "../utils/generateToken.js";
+import GameSettings from "../models/GameSettings.js";
+
+const CATEGORIES = ["A", "B", "C", "D", "E"];
+
+export const registerTeam = async (req, res) => {
+  try {
+    const { teamId, password } = req.body;
+
+    if (!teamId || !password) {
+      return res.status(400).json({ message: "Please provide teamId and password" });
+    }
+
+    const existingTeam = await Team.findOne({ name: teamId });
+    if (existingTeam) {
+      return res.status(400).json({ message: "Team ID already taken" });
+    }
+
+    // 1. Balanced Allocation Algorithm
+    const categoryCounts = await Promise.all(
+      CATEGORIES.map(async (cat) => ({
+        name: cat,
+        count: await Team.countDocuments({ category: cat }),
+      }))
+    );
+
+    // Find the minimum count among categories
+    const minCount = Math.min(...categoryCounts.map((c) => c.count));
+    
+    // Filter categories that have the minimum count
+    const bestCategories = categoryCounts
+      .filter((c) => c.count === minCount)
+      .map((c) => c.name);
+    
+    // Randomly select one of the least populated categories
+    const category = bestCategories[Math.floor(Math.random() * bestCategories.length)];
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const gameSettings = await GameSettings.findOne();
+
+    // 2. Sync Start Time: If game started, team starts NOW. If not, startTime is null.
+    const team = await Team.create({
+      name: teamId,
+      password: hashedPassword,
+      category,
+      startTime: gameSettings?.isStarted ? new Date() : null,
+      score: 0,
+      currentStep: 1
+    });
+
+    res.status(201).json({
+      token: generateToken(team._id),
+      role: "player",
+      team
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const teamLogin = async (req, res) => {
+  try {
+    const { teamId, password } = req.body;
+    const team = await Team.findOne({ name: teamId });
+
+    if (!team) {
+      return res.status(401).json({ message: "Team not found." });
+    }
+
+    const isMatch = await bcrypt.compare(password, team.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    res.json({
+      token: generateToken(team._id),
+      role: "player",
+      team
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getMe = async (req, res) => {
+  try {
+    const team = req.team;
+    // Calculate total steps for the team's category
+    const totalSteps = await Location.countDocuments({ 
+      category: { $in: [team.category, "ALL"] } 
+    });
+    
+    res.json({
+      ...team.toObject(),
+      totalSteps
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getGameStatus = async (req, res) => {
+  try {
+    let settings = await GameSettings.findOne();
+    if (!settings) settings = await GameSettings.create({});
+    res.json({
+      ...settings.toObject(),
+      serverTime: new Date()
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getLeaderboard = async (req, res) => {
+    // Returns global top or category-specific leaderboard
+    try {
+      const { category } = req.query;
+      if (category) {
+        const leaderboard = await Team.find({ category })
+          .sort({ score: -1, penalties: 1, startTime: 1 })
+          .limit(6)
+          .select("name score category currentStep");
+        return res.json(leaderboard);
+      }
+
+      const leaderboard = await Team.find()
+        .sort({ score: -1, penalties: 1, startTime: 1 })
+        .limit(10)
+        .select("name score category currentStep");
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+
+  // Returns whether current team is among top N qualifiers for their category
+  export const getQualificationStatus = async (req, res) => {
+    try {
+      const team = req.team;
+      const topN = Number(req.query.top) || 2;
+
+      const topTeams = await Team.find({ category: team.category })
+        .sort({ score: -1, penalties: 1, startTime: 1 })
+        .limit(topN)
+        .select("_id name score");
+
+      const qualified = topTeams.some(t => t._id.toString() === team._id.toString());
+      const position = topTeams.findIndex(t => t._id.toString() === team._id.toString());
+
+      res.json({ qualified, position: qualified ? position + 1 : null, top: topTeams });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
