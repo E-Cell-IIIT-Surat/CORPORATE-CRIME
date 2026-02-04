@@ -3,7 +3,6 @@ import { Toaster } from 'react-hot-toast';
 import PlayerLogin from './pages/PlayerLogin';
 import PlayerSignup from './pages/PlayerSignup';
 import PlayerDashboard from './pages/PlayerDashboard';
-import QuizPage from './pages/QuizPage';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -37,14 +36,6 @@ function App() {
             element={
               <PrivateRoute role="player">
                 <PlayerDashboard />
-              </PrivateRoute>
-            } 
-          />
-          <Route 
-            path="/quiz" 
-            element={
-              <PrivateRoute role="player">
-                <QuizPage />
               </PrivateRoute>
             } 
           />
