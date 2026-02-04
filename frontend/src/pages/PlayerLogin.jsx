@@ -5,7 +5,7 @@ import { Trophy, Shield, UserPlus, LogIn, Command } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PlayerLogin = () => {
-  const [teamId, setTeamId] = useState('');
+  const [teamName, setTeamName] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ const PlayerLogin = () => {
     setLoading(true);
     const loginToast = toast.loading('Authenticating credentials...');
     try {
-      const { data } = await teamAPI.login({ teamId, password });
+      const { data } = await teamAPI.login({ teamName, password });
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', 'player');
       toast.success('Access Granted. Welcome back, agent.', { id: loginToast });
@@ -37,16 +37,16 @@ const PlayerLogin = () => {
       </div>
       
       <div className="w-full max-w-sm relative z-10">
-        <div className="bg-[#0c1222]/50 backdrop-blur-2xl p-5 sm:p-6 md:p-10 lg:p-12 rounded-2xl sm:rounded-3xl shadow-2xl border border-white/5 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-blue-500/50 to-transparent" />
+        <div className="bg-[#0c1222]/60 backdrop-blur-2xl p-5 sm:p-6 md:p-10 lg:p-12 rounded-2xl sm:rounded-3xl shadow-2xl border border-blue-500/20 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-blue-500/60 to-transparent" />
           
           <div className="flex flex-col items-center mb-8 sm:mb-10 md:mb-12">
-            <div className="bg-blue-600 p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl shadow-[0_0_30px_rgba(37,99,235,0.3)] mb-4 sm:mb-6 md:mb-8 transform -rotate-3 group-hover:rotate-0 transition-all duration-500">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl shadow-[0_0_30px_rgba(37,99,235,0.45)] mb-4 sm:mb-6 md:mb-8 transform -rotate-3 group-hover:rotate-0 transition-all duration-500">
               <Command size={28} className="text-white sm:size-10 md:size-12" />
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight sm:tracking-tighter text-white mb-2 sm:mb-3 uppercase">Cyber Hunt</h1>
-            <p className="text-blue-400/60 text-center font-bold text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em]">
-              Encrypted Access Portal
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight sm:tracking-tighter text-white mb-2 sm:mb-3 uppercase">Corporate Crime</h1>
+            <p className="text-blue-400/70 text-center font-bold text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em]">
+              Secure Access Portal
             </p>
           </div>
 
@@ -56,10 +56,10 @@ const PlayerLogin = () => {
               <div className="relative group/input">
                 <input
                   type="text"
-                  className="w-full bg-black/40 border border-white/5 rounded-lg sm:rounded-2xl px-3 sm:px-5 py-3 sm:py-4 md:py-5 text-sm sm:text-base focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all text-white placeholder:text-gray-700 font-bold"
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
-                  placeholder="TEAM_ID"
+                  className="w-full bg-black/50 border border-blue-500/10 rounded-lg sm:rounded-2xl px-3 sm:px-5 py-3 sm:py-4 md:py-5 text-sm sm:text-base focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/40 transition-all text-white placeholder:text-gray-700 font-bold"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="TEAM_NAME"
                   required
                 />
               </div>
@@ -69,7 +69,7 @@ const PlayerLogin = () => {
               <div className="relative group/input">
                 <input
                   type="password"
-                  className="w-full bg-black/40 border border-white/5 rounded-lg sm:rounded-2xl px-3 sm:px-5 py-3 sm:py-4 md:py-5 text-sm sm:text-base focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all text-white placeholder:text-gray-700 font-bold"
+                  className="w-full bg-black/50 border border-blue-500/10 rounded-lg sm:rounded-2xl px-3 sm:px-5 py-3 sm:py-4 md:py-5 text-sm sm:text-base focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/40 transition-all text-white placeholder:text-gray-700 font-bold"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -81,7 +81,7 @@ const PlayerLogin = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 text-white font-black py-3 sm:py-4 md:py-5 rounded-lg sm:rounded-2xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] active:scale-95 flex items-center justify-center gap-2 sm:gap-3 uppercase tracking-wider sm:tracking-widest text-xs sm:text-sm"
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 disabled:bg-gray-800 text-white font-black py-3 sm:py-4 md:py-5 rounded-lg sm:rounded-2xl transition-all shadow-[0_0_24px_rgba(37,99,235,0.35)] active:scale-95 flex items-center justify-center gap-2 sm:gap-3 uppercase tracking-wider sm:tracking-widest text-xs sm:text-sm"
             >
               {loading ? (
                 <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -105,13 +105,13 @@ const PlayerLogin = () => {
             <div className="flex flex-col gap-3 sm:gap-4 w-full">
               <Link 
                 to="/signup" 
-                className="w-full py-2.5 sm:py-3 md:py-4 rounded-lg sm:rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-center text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-gray-400 hover:text-white transition-all"
+                className="w-full py-2.5 sm:py-3 md:py-4 rounded-lg sm:rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-center text-[9px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest text-blue-500/70 hover:text-blue-400 transition-all"
               >
                 Register New Team
               </Link>
               <button 
                 onClick={() => navigate('/admin')}
-                className="w-full py-2.5 sm:py-3 md:py-4 rounded-lg sm:rounded-xl border border-blue-500/10 bg-blue-500/5 hover:bg-blue-500/10 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.3em] text-blue-500/70 hover:text-blue-400 transition-all flex items-center justify-center gap-1 sm:gap-2"
+                className="w-full py-2.5 sm:py-3 md:py-4 rounded-lg sm:rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.3em] text-blue-500/70 hover:text-blue-400 transition-all flex items-center justify-center gap-1 sm:gap-2"
               >
                 <Shield size={12} className="sm:size-3.5" />
                 <span className="hidden sm:inline">Command Center</span>

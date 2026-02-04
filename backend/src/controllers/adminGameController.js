@@ -144,19 +144,15 @@ export const deleteTeam = async (req, res) => {
   }
 };
 
-/* CATEGORY-WISE LEADERBOARD */
+/* GLOBAL LEADERBOARD */
 export const getLeaderboard = async (req, res) => {
   try {
-    const categories = ["A", "B", "C", "D", "E"];
-    const groupedLeaderboard = {};
+    const leaderboard = await Team.find()
+      .sort({ score: -1, penalties: 1, startTime: 1 })
+      .limit(20)
+      .select("-password");
 
-    for (const cat of categories) {
-      groupedLeaderboard[cat] = await Team.find({ category: cat })
-        .sort({ score: -1, penalties: 1, startTime: 1 })
-        .select("-password");
-    }
-
-    res.json(groupedLeaderboard);
+    res.json(leaderboard);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -193,6 +189,42 @@ export const createLocation = async (req, res) => {
   }
 };
 
+export const getAllLocations = async (req, res) => {
+  try {
+    const locations = await Location.find().sort({ order: 1 });
+    res.json(locations);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateLocation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { code, order, category, pdfContent, answer } = req.body;
+    const location = await Location.findByIdAndUpdate(
+      id,
+      { code, order, category, pdfContent, answer },
+      { new: true }
+    );
+    if (!location) return res.status(404).json({ message: "Location not found" });
+    res.json(location);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteLocation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const location = await Location.findByIdAndDelete(id);
+    if (!location) return res.status(404).json({ message: "Location not found" });
+    res.json({ message: "Location deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const createQuestion = async (req, res) => {
   try {
     const { step, category, question, correctAnswer, points, imageUrl, imageBase64 } = req.body;
@@ -203,7 +235,6 @@ export const createQuestion = async (req, res) => {
     if (req.file) {
       finalImageUrl = fileToBase64(req.file);
     } else if (imageBase64) {
-      // Store base64 directly
       finalImageUrl = imageBase64;
     } else if (imageUrl) {
       finalImageUrl = imageUrl;
@@ -234,7 +265,6 @@ export const createClue = async (req, res) => {
     if (req.file) {
       finalImageUrl = fileToBase64(req.file);
     } else if (imageBase64) {
-      // Store base64 directly
       finalImageUrl = imageBase64;
     } else if (imageUrl) {
       finalImageUrl = imageUrl;
@@ -324,6 +354,64 @@ export const deleteQuestion = async (req, res) => {
     if (!deleted) return res.status(404).json({ message: "Question not found" });
     res.json({ message: "Question deleted successfully" });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* TEAM APPROVAL SYSTEM */
+export const getPendingTeams = async (req, res) => {
+  try {
+    const pendingTeams = await Team.find({ isApproved: false }).select("-password");
+    res.json(pendingTeams);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const approveTeam = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const team = await Team.findById(id);
+    
+    if (!team) {
+      return res.status(404).json({ message: "Team not found" });
+    }
+
+    team.isApproved = true;
+    team.approvedBy = req.admin._id;
+    team.approvedAt = new Date();
+    await team.save();
+
+    res.json({
+      message: "Team approved successfully",
+      team: {
+        _id: team._id,
+        name: team.name,
+        isApproved: team.isApproved,
+        approvedAt: team.approvedAt
+      }
+    });
+  } catch (error) {
+    console.error("Approve Team Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const rejectTeam = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const team = await Team.findByIdAndDelete(id);
+    
+    if (!team) {
+      return res.status(404).json({ message: "Team not found" });
+    }
+
+    res.json({
+      message: "Team rejected and removed from system",
+      teamName: team.name
+    });
+  } catch (error) {
+    console.error("Reject Team Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

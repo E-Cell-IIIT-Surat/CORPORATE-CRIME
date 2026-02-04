@@ -82,7 +82,7 @@ const QRScanner = ({ onScanSuccess }) => {
         setIsCameraActive(true);
       } catch (retryErr) {
         console.error("Final camera fallback error:", retryErr);
-        toast.error("Optics Malfunction: Camera access denied. Use Intel Upload.");
+        // Don't show error toast immediately - user can use file upload
         setIsCameraActive(false);
       }
     } finally {
@@ -105,13 +105,13 @@ const QRScanner = ({ onScanSuccess }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const loader = toast.loading("Processing image...");
+    const loader = toast.loading("Analyzing image...");
     try {
       const result = await scannerRef.current.scanFile(file, true);
-      toast.success("QR Code detected", { id: loader });
+      toast.dismiss(loader);
       onScanSuccess(result);
     } catch (err) {
-      toast.error("No valid QR code found in image", { id: loader });
+      toast.error("No QR code detected in image", { id: loader });
     }
   };
 

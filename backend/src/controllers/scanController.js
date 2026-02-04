@@ -3,12 +3,20 @@ import Location from "../models/Location.js";
 import Question from "../models/Question.js";
 import ScanLog from "../models/ScanLog.js";
 import Clue from "../models/Clue.js";
-import { WRONG_QR_PENALTY, WRONG_ANSWER_PENALTY, SCAN_COOLDOWN } from "../utils/constants.js";
+import { SCAN_COOLDOWN } from "../utils/constants.js";
 
 export const scanQR = async (req, res) => {
   try {
     const { qrCode } = req.body;
     const team = req.team;
+    
+    // Normalize QR code - trim whitespace and handle empty input
+    const normalizedQR = qrCode?.toString().trim();
+    if (!normalizedQR) {
+      return res.status(400).json({
+        message: "Invalid scan data. Please try again."
+      });
+    }
 
     // 1. Check Security Lockout (Cooldown)
     if (team.lastWrongScanTime) {
@@ -22,11 +30,9 @@ export const scanQR = async (req, res) => {
       }
     }
 
-    const location = await Location.findOne({ code: qrCode });
+    const location = await Location.findOne({ code: normalizedQR });
     if (!location) {
-      // Unknown QR - treat as wrong scan: apply penalty and set cooldown
-      team.penalties += WRONG_QR_PENALTY;
-      team.score = Math.max(0, team.score - WRONG_QR_PENALTY);
+      // Unknown QR - set cooldown (no penalty)
       team.lastWrongScanTime = new Date();
       await team.save();
 
@@ -37,17 +43,14 @@ export const scanQR = async (req, res) => {
       });
 
       return res.status(404).json({
-        message: "Invalid QR Code detected. Security penalty applied.",
-        penalty: WRONG_QR_PENALTY,
+        message: "Invalid QR Code detected. Try again.",
         remainingSeconds: SCAN_COOLDOWN / 1000
       });
     }
 
     // 2. Validate Step Order
     if (location.order !== team.currentStep) {
-      // Apply Penalty
-      team.penalties += WRONG_QR_PENALTY;
-      team.score = Math.max(0, team.score - WRONG_QR_PENALTY);
+      // Wrong sequence - set cooldown (no penalty)
       team.lastWrongScanTime = new Date();
       await team.save();
 
@@ -58,8 +61,7 @@ export const scanQR = async (req, res) => {
       });
 
       return res.status(400).json({
-        message: "Incorrect Location Sequence. Penalty applied.",
-        penalty: WRONG_QR_PENALTY,
+        message: "Incorrect Location Sequence. Try the current objective.",
         cooldown: SCAN_COOLDOWN / 1000
       });
     }
@@ -117,9 +119,21 @@ export const verifyAnswer = async (req, res) => {
     const question = await Question.findById(questionId);
     if (!question) return res.status(404).json({ message: "Challenge data missing." });
 
-    // Normalize strings for comparison
-    const submitted = answer.toLowerCase().trim();
-    const correct = question.correctAnswer.toLowerCase().trim();
+    // Standardize answers for comparison:
+    // - Convert to lowercase
+    // - Trim whitespace from both ends
+    // - Replace multiple spaces with single space
+    // - Remove special characters except spaces
+    const normalizeAnswer = (str) => {
+      return str
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ') // Multiple spaces to single space
+        .replace(/[^a-z0-9\s]/g, ''); // Remove special chars except spaces
+    };
+    
+    const submitted = normalizeAnswer(answer);
+    const correct = normalizeAnswer(question.correctAnswer);
 
     if (submitted === correct) {
       // ✅ SUCCESS FLOW
@@ -144,7 +158,8 @@ export const verifyAnswer = async (req, res) => {
       // Fast answer bonus: under 30 seconds gets extra points
       const speedBonus = timeTaken < 30 ? Math.round((30 - timeTaken) * 0.5) : 0;
       
-      const pointsAwarded = Math.round(basePoints * timeMultiplier) + speedBonus;
+      const rawPoints = Math.round(basePoints * timeMultiplier) + speedBonus;
+      const pointsAwarded = Math.max(basePoints, Math.min(rawPoints, basePoints * 3));
 
       team.score += pointsAwarded;
       team.currentStep += 1; // ADVANCE STEP
@@ -180,9 +195,7 @@ export const verifyAnswer = async (req, res) => {
       });
 
     } else {
-      // ❌ FAILURE FLOW
-      team.penalties += WRONG_ANSWER_PENALTY;
-      team.score = Math.max(0, team.score - WRONG_ANSWER_PENALTY);
+      // ❌ FAILURE FLOW (no penalty, cooldown only)
       team.lastWrongScanTime = new Date();
       await team.save();
 
@@ -193,8 +206,7 @@ export const verifyAnswer = async (req, res) => {
       });
 
       res.status(400).json({
-        message: "Decryption Failed. Penalties applied.",
-        penalty: WRONG_ANSWER_PENALTY,
+        message: "Decryption Failed. Try again.",
         remainingSeconds: SCAN_COOLDOWN / 1000
       });
     }

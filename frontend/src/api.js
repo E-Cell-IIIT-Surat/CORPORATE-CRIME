@@ -41,7 +41,7 @@ export const teamAPI = {
   register: (data) => api.post('/team/register', data),
   getMe: () => api.get('/team/me'),
   getGameStatus: () => api.get('/team/game-status'),
-  getLeaderboard: (category) => api.get('/team/leaderboard', { params: category ? { category } : {} }),
+  getLeaderboard: () => api.get('/team/leaderboard'),
   getClue: () => api.get('/clue'),
   scanQR: (qrCode) => api.post('/qr/scan', { qrCode }),
   verifyAnswer: (data) => api.post('/qr/verify', data),
@@ -55,18 +55,33 @@ export const adminAPI = {
   getGameStatus: () => api.get('/admin/status'),
   toggleGame: (action, eventDurationMinutes) => api.post('/admin/toggle', { action, eventDurationMinutes }),
   getTeams: () => api.get('/admin/teams'),
+  getPendingTeams: () => api.get('/admin/pending-teams'),
+  approveTeam: (id) => api.post(`/admin/approve-team/${id}`),
+  rejectTeam: (id) => api.post(`/admin/reject-team/${id}`),
   getLeaderboard: () => api.get('/admin/leaderboard'),
   resetTeam: (id) => api.post(`/admin/reset-team/${id}`),
   removePenalty: (id) => api.post(`/admin/remove-penalty/${id}`),
   adjustTime: (id, minutes) => api.post(`/admin/adjust-time/${id}`, { minutes }),
   deleteTeam: (id) => api.delete(`/admin/team/${id}`),
   createLocation: (data) => api.post('/admin/location', data),
-  createQuestion: (data) => api.post('/admin/question', data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  getLocations: () => api.get('/admin/locations'),
+  updateLocation: (id, data) => api.put(`/admin/location/${id}`, data),
+  deleteLocation: (id) => api.delete(`/admin/location/${id}`),
+  createQuestion: (data) => {
+    // Let axios handle FormData headers automatically
+    return api.post('/admin/question', data);
+  },
   getQuestions: () => api.get('/admin/questions'),
   deleteQuestion: (id) => api.delete(`/admin/question/${id}`),
   getClues: () => api.get('/admin/clues'),
-  createClue: (data) => api.post('/admin/clue', data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
-  updateClue: (id, data) => api.put(`/admin/clue/${id}`, data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  createClue: (data) => {
+    // Let axios handle FormData headers automatically
+    return api.post('/admin/clue', data);
+  },
+  updateClue: (id, data) => {
+    // Let axios handle FormData headers automatically
+    return api.put(`/admin/clue/${id}`, data);
+  },
   deleteClue: (id) => api.delete(`/admin/clue/${id}`),
 };
 

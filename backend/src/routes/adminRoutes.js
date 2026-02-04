@@ -6,6 +6,9 @@ import { parseFormData } from "../middleware/parseFormData.js";
 
 import {
   createLocation,
+  getAllLocations,
+  updateLocation,
+  deleteLocation,
   createQuestion,
   getAllQuestions,
   deleteQuestion,
@@ -21,7 +24,10 @@ import {
   toggleGame,
   removePenalty,
   adjustTime,
-  deleteTeam
+  deleteTeam,
+  getPendingTeams,
+  approveTeam,
+  rejectTeam
 } from "../controllers/adminGameController.js";
 
 const router = express.Router();
@@ -36,6 +42,10 @@ router.get("/status", adminProtect, getGameStatus);
 router.post("/toggle", adminProtect, toggleGame);
 
 router.post("/location", adminProtect, createLocation);
+router.get("/locations", adminProtect, getAllLocations);
+router.put("/location/:id", adminProtect, updateLocation);
+router.delete("/location/:id", adminProtect, deleteLocation);
+
 router.post("/question", adminProtect, useUpload, createQuestion);
 router.get("/questions", adminProtect, getAllQuestions);
 router.delete("/question/:id", adminProtect, deleteQuestion);
@@ -48,6 +58,9 @@ router.delete("/clue/:id", adminProtect, deleteClue);
 
 /* TEAM MANAGEMENT */
 router.get("/teams", adminProtect, getAllTeams);
+router.get("/pending-teams", adminProtect, getPendingTeams);
+router.post("/approve-team/:id", adminProtect, approveTeam);
+router.post("/reject-team/:id", adminProtect, rejectTeam);
 router.get("/leaderboard", adminProtect, getLeaderboard);
 router.get("/qualifiers", adminProtect, getQualifiers);
 router.post("/reset-team/:id", adminProtect, resetTeam);

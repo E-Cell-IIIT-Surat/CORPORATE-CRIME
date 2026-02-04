@@ -18,15 +18,18 @@ import {
   ShieldAlert,
   Clock8,
   ShieldCheck as ShieldIcon,
-  FileQuestion
+  FileQuestion,
+  UserCheck
 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('teams');
   const [teams, setTeams] = useState([]);
+  const [pendingTeams, setPendingTeams] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [clues, setClues] = useState([]);
   const [questions, setQuestions] = useState([]);
-  const [leaderboard, setLeaderboard] = useState({});
+  const [leaderboard, setLeaderboard] = useState([]);
   const [gameStatus, setGameStatus] = useState({ isStarted: false, isPaused: false, startTime: null });
   const [elapsedTime, setElapsedTime] = useState(0);
   const [eventDuration, setEventDuration] = useState(120); // minutes
@@ -34,6 +37,8 @@ const AdminDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showClueModal, setShowClueModal] = useState(false);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [newLocation, setNewLocation] = useState({ code: '', order: 1, category: 'ALL', pdfContent: '', answer: '' });
   const [newClue, setNewClue] = useState({ step: 1, category: 'A', text: '', image: null, imageUrl: '' });
   const [newQuestion, setNewQuestion] = useState({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10, image: null, imageUrl: '' });
   const [cluePreview, setCluePreview] = useState(null);
@@ -136,6 +141,32 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateLocation = async (e) => {
+    e.preventDefault();
+    const createToast = toast.loading('Creating location...');
+    try {
+      await adminAPI.createLocation(newLocation);
+      toast.success('Location created successfully!', { id: createToast });
+      setShowLocationModal(false);
+      setNewLocation({ code: '', order: 1, category: 'ALL', pdfContent: '', answer: '' });
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create location', { id: createToast });
+    }
+  };
+
+  const handleDeleteLocation = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this location?')) return;
+    const deleteToast = toast.loading('Deleting location...');
+    try {
+      await adminAPI.deleteLocation(id);
+      toast.success('Location deleted', { id: deleteToast });
+      fetchData();
+    } catch (err) {
+      toast.error('Delete failed', { id: deleteToast });
+    }
+  };
+
   const handleCreateClue = async (e) => {
     e.preventDefault();
     try {
@@ -219,6 +250,12 @@ const AdminDashboard = () => {
       if (activeTab === 'teams') {
         const { data } = await adminAPI.getTeams();
         setTeams(data);
+      } else if (activeTab === 'approvals') {
+        const { data } = await adminAPI.getPendingTeams();
+        setPendingTeams(data);
+      } else if (activeTab === 'locations') {
+        const { data } = await adminAPI.getLocations();
+        setLocations(data);
       } else if (activeTab === 'clues') {
         const { data } = await adminAPI.getClues();
         setClues(data);
@@ -231,94 +268,157 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error(err);
+      toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResetTeam = async (id) => {
-    if (!window.confirm('Are you sure you want to reset this team? All progress will be lost.')) return;
-    try {
-      await adminAPI.resetTeam(id);
-      toast.success('Team mission status reset.');
-      fetchData();
-    } catch (err) {
-      toast.error('Reset failed.');
-    }
-  };
-
   const navItems = [
     { id: 'teams', label: 'Teams', icon: Users },
-    { id: 'clues', label: 'Clues', icon: MapPin },
-    { id: 'questions', label: 'Questions', icon: FileQuestion },
+    { id: 'approvals', label: 'Approvals', icon: UserCheck },
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+    { id: 'locations', label: 'Locations', icon: MapPin },
+    { id: 'clues', label: 'Clues', icon: ShieldIcon },
+    { id: 'questions', label: 'Questions', icon: FileQuestion },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col md:flex-row w-full overflow-x-hidden">
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-3 sm:p-4 bg-gray-900 border-b border-gray-800">
-        <div className="flex items-center gap-2 text-red-500 font-bold text-sm">
-          <ShieldIcon size={20} className="sm:size-6" />
-          <span className="truncate">ADMIN</span>
-        </div>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-gray-400">
-          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </div>
-
+    <div className="flex min-h-screen bg-gray-950 text-white font-['Orbitron',sans-serif]">
       {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 border-r border-gray-800 p-4 sm:p-6 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-72 lg:w-80
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="hidden md:flex items-center gap-2 text-red-500 font-black text-xl lg:text-2xl mb-8 lg:mb-10 tracking-tighter group cursor-default">
-          <div className="bg-red-600/10 p-2 rounded-xl border border-red-500/20 group-hover:border-red-500 transition-all">
-            <ShieldIcon size={24} className="lg:size-8 group-hover:scale-110 transition-transform" />
+      <aside className="hidden lg:flex flex-col w-80 border-r border-white/5 bg-black/40 backdrop-blur-md p-6 overflow-y-auto">
+        <div className="mb-8 pb-8 border-b border-white/10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center shadow-lg shadow-red-900/20">
+              <ShieldAlert className="text-white" size={20} />
+            </div>
+            <div>
+              <h1 className="text-xl font-black tracking-tight">ADMIN HQ</h1>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Command Center</p>
+            </div>
           </div>
-          <span className="bg-linear-to-r from-red-500 to-red-800 bg-clip-text text-transparent text-lg lg:text-2xl">PORTAL</span>
+
+          {/* Desktop game controls */}
+          <div className="space-y-4">
+            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Game Status</div>
+            {!gameStatus.isStarted ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Event Duration (minutes)</label>
+                  <input 
+                    type="number" 
+                    value={eventDuration} 
+                    onChange={(e) => setEventDuration(Number(e.target.value))} 
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-red-500"
+                    min="1"
+                    max="480"
+                  />
+                </div>
+                <button 
+                  onClick={() => handleGameControl('start')}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 rounded-xl text-xs font-black"
+                >
+                  <Play size={14} fill="currentColor" /> START EVENT ({eventDuration}min)
+                </button>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => handleGameControl('pause')}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-black ${gameStatus.isPaused ? 'bg-yellow-600' : 'bg-white/5'}`}
+                >
+                  {gameStatus.isPaused ? <Play size={14} fill="currentColor" /> : <Pause size={14} fill="currentColor" />}
+                  {gameStatus.isPaused ? 'RESUME' : 'PAUSE'}
+                </button>
+                <button 
+                  onClick={() => handleGameControl('stop')}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-red-600/20 text-red-500 rounded-xl text-xs font-black"
+                >
+                  <Square size={14} fill="currentColor" /> STOP
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Mobile Controls */}
-        <div className="lg:hidden mb-8 space-y-4">
-          <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Game Status</div>
-          {!gameStatus.isStarted ? (
-            <>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Event Duration (minutes)</label>
-                <input 
-                  type="number" 
-                  value={eventDuration} 
-                  onChange={(e) => setEventDuration(Number(e.target.value))} 
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-red-500"
-                  min="1"
-                  max="480"
-                />
+        <nav className="space-y-2">
+          {navItems.map((item) => (
+            <button 
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === item.id ? 'bg-red-600 shadow-lg shadow-red-900/20 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+            >
+              <item.icon size={20} /> {item.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Mobile Sidebar */}
+      <aside className={`lg:hidden fixed inset-y-0 left-0 w-80 border-r border-white/5 bg-black backdrop-blur-md p-6 overflow-y-auto transition-transform duration-300 z-50 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="mb-8 pb-8 border-b border-white/10">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-xl flex items-center justify-center shadow-lg shadow-red-900/20">
+                <ShieldAlert className="text-white" size={20} />
               </div>
-              <button 
-                onClick={() => handleGameControl('start')}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 rounded-xl text-xs font-black"
-              >
-                <Play size={14} fill="currentColor" /> START EVENT ({eventDuration}min)
-              </button>
-            </>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <button 
-                onClick={() => handleGameControl('pause')}
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-black ${gameStatus.isPaused ? 'bg-yellow-600' : 'bg-white/5'}`}
-              >
-                {gameStatus.isPaused ? <Play size={14} fill="currentColor" /> : <Pause size={14} fill="currentColor" />}
-                {gameStatus.isPaused ? 'RESUME' : 'PAUSE'}
-              </button>
-              <button 
-                onClick={() => handleGameControl('stop')}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-red-600/20 text-red-500 rounded-xl text-xs font-black"
-              >
-                <Square size={14} fill="currentColor" /> STOP
-              </button>
+              <div>
+                <h1 className="text-xl font-black tracking-tight">ADMIN HQ</h1>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Command Center</p>
+              </div>
             </div>
-          )}
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Mobile game controls */}
+          <div className="space-y-4">
+            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Game Status</div>
+            {!gameStatus.isStarted ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Event Duration (minutes)</label>
+                  <input 
+                    type="number" 
+                    value={eventDuration} 
+                    onChange={(e) => setEventDuration(Number(e.target.value))} 
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-red-500"
+                    min="1"
+                    max="480"
+                  />
+                </div>
+                <button 
+                  onClick={() => handleGameControl('start')}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 rounded-xl text-xs font-black"
+                >
+                  <Play size={14} fill="currentColor" /> START EVENT ({eventDuration}min)
+                </button>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => handleGameControl('pause')}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-black ${gameStatus.isPaused ? 'bg-yellow-600' : 'bg-white/5'}`}
+                >
+                  {gameStatus.isPaused ? <Play size={14} fill="currentColor" /> : <Pause size={14} fill="currentColor" />}
+                  {gameStatus.isPaused ? 'RESUME' : 'PAUSE'}
+                </button>
+                <button 
+                  onClick={() => handleGameControl('stop')}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-red-600/20 text-red-500 rounded-xl text-xs font-black"
+                >
+                  <Square size={14} fill="currentColor" /> STOP
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         
         <nav className="space-y-2">
@@ -409,6 +509,82 @@ const AdminDashboard = () => {
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 lg:p-10 bg-[radial-gradient(circle_at_50%_0%,rgba(220,38,38,0.05),transparent_50%)]">
           <div className="max-w-7xl mx-auto">
+            {activeTab === 'approvals' && (
+              <div className="space-y-4">
+                {pendingTeams.length === 0 ? (
+                  <div className="bg-gray-900 rounded-2xl border border-white/5 p-12 text-center">
+                    <UserCheck className="mx-auto mb-4 text-gray-600" size={48} />
+                    <p className="text-gray-500 font-bold text-lg">No pending team approvals</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
+                    {pendingTeams.map((team) => (
+                      <div key={team._id} className="bg-gray-900 rounded-2xl border border-white/5 p-6 hover:border-red-500/20 transition-all">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-4">
+                              <h3 className="text-2xl font-black text-white">{team.name}</h3>
+                              <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-lg text-xs font-black border border-yellow-500/30">
+                                PENDING
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Team Leader</p>
+                                <p className="text-white font-bold">{team.teamLeader}</p>
+                                <p className="text-gray-400 text-sm">{team.teamLeaderEmail}</p>
+                              </div>
+                              
+                              {team.members && team.members.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Team Members ({team.members.length})</p>
+                                  <div className="space-y-1">
+                                    {team.members.map((member, idx) => (
+                                      <div key={idx} className="text-sm">
+                                        <p className="text-white font-semibold">{member.name}</p>
+                                        <p className="text-gray-500 text-xs">{member.email}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="mt-4 flex items-center gap-4 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                Category: <strong className="text-gray-400">{team.category}</strong>
+                              </span>
+                              <span className="flex items-center gap-1">
+                                Registered: <strong className="text-gray-400">{new Date(team.createdAt).toLocaleString()}</strong>
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex lg:flex-col gap-3 min-w-35">
+                            <button 
+                              onClick={() => handleApproveTeam(team._id)}
+                              className="flex-1 lg:flex-initial flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-black text-sm transition-all"
+                            >
+                              <ShieldIcon size={16} />
+                              Approve
+                            </button>
+                            <button 
+                              onClick={() => handleRejectTeam(team._id)}
+                              className="flex-1 lg:flex-initial flex items-center justify-center gap-2 px-6 py-3 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-xl font-black text-sm transition-all"
+                            >
+                              <Trash2 size={16} />
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'teams' && (
               <div className="space-y-4">
                 {/* Desktop Table */}
@@ -559,6 +735,106 @@ const AdminDashboard = () => {
               </div>
             )}
 
+            {activeTab === 'locations' && (
+              <div className="space-y-8">
+                <button 
+                  onClick={() => setShowLocationModal(true)}
+                  className="bg-red-600 hover:bg-red-500 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl shadow-red-600/20 active:scale-95 w-full sm:w-auto"
+                >
+                  <Plus size={24} /> Create New Location/QR
+                </button>
+
+                {/* Mobile Cards */}
+                <div className="grid grid-cols-1 gap-4 md:hidden">
+                  {locations.map((location) => (
+                    <div key={location._id} className="bg-gray-900 rounded-2xl border border-white/5 p-5 space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">QR Code</div>
+                          <code className="bg-gray-800 px-3 py-1 rounded text-sm text-blue-400 inline-block">{location.code}</code>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteLocation(location._id)}
+                          className="p-2 bg-red-500/10 text-red-500 rounded-lg"
+                          title="Delete Location"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-black/40 rounded-xl p-3 text-center">
+                          <div className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Order</div>
+                          <div className="text-white font-black">#{location.order}</div>
+                        </div>
+                        <div className="bg-black/40 rounded-xl p-3 text-center">
+                          <div className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Category</div>
+                          <div className="text-white font-black">{location.category}</div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Content</div>
+                        <p className="text-gray-400 text-sm wrap-break-word">{location.pdfContent || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Answer</div>
+                        <code className="text-green-400 font-mono text-sm wrap-break-word">{location.answer}</code>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table */}
+                <div className="hidden md:block bg-gray-900 rounded-2xl border border-white/5 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-225">
+                      <thead className="bg-white/5 text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">
+                        <tr>
+                          <th className="px-8 py-6">QR Code</th>
+                          <th className="px-8 py-6 text-center">Order</th>
+                          <th className="px-8 py-6 text-center">Category</th>
+                          <th className="px-8 py-6">Content</th>
+                          <th className="px-8 py-6">Answer</th>
+                          <th className="px-8 py-6 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {locations.map((location) => (
+                          <tr key={location._id} className="hover:bg-white/5 transition-colors group">
+                            <td className="px-8 py-6 font-bold text-lg">
+                              <code className="bg-gray-800 px-3 py-1 rounded text-sm text-blue-400">{location.code}</code>
+                            </td>
+                            <td className="px-8 py-6 text-center">
+                              <span className="text-gray-300 font-mono">#{location.order}</span>
+                            </td>
+                            <td className="px-8 py-6 text-center">
+                              <span className="bg-gray-800 text-gray-300 px-3 py-1 rounded-lg text-xs font-black border border-white/5">
+                                {location.category}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <p className="text-gray-400 text-sm truncate max-w-xs">{location.pdfContent || 'N/A'}</p>
+                            </td>
+                            <td className="px-8 py-6">
+                              <code className="text-green-400 font-mono text-sm">{location.answer}</code>
+                            </td>
+                            <td className="px-8 py-6 text-right">
+                              <button 
+                                onClick={() => handleDeleteLocation(location._id)}
+                                className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-all"
+                                title="Delete Location"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'clues' && (
               <div className="space-y-8">
                 <button 
@@ -656,9 +932,94 @@ const AdminDashboard = () => {
         </main>
       </div>
 
+      {/* Location Modal */}
+      {showLocationModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-3 sm:p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowLocationModal(false)} />
+          <div className="relative bg-gray-900 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-black mb-4 sm:mb-6 md:mb-8 flex items-center gap-2 sm:gap-3">
+              <MapPin className="text-red-500 size-5 sm:size-6" />
+              <span>CREATE LOCATION/QR</span>
+            </h2>
+            <form onSubmit={handleCreateLocation} className="space-y-4 sm:space-y-6">
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">QR Code</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="QR_CODE_123"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                  value={newLocation.code}
+                  onChange={(e) => setNewLocation({...newLocation, code: e.target.value})}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Order</label>
+                  <input 
+                    type="number" 
+                    required 
+                    min="1"
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                    value={newLocation.order}
+                    onChange={(e) => setNewLocation({...newLocation, order: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Category</label>
+                  <select 
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                    value={newLocation.category}
+                    onChange={(e) => setNewLocation({...newLocation, category: e.target.value})}
+                  >
+                    {['ALL','A','B','C','D','E'].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Content (PDF/Text)</label>
+                <textarea 
+                  rows="3"
+                  placeholder="Content to display at this location..."
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-red-500 transition-colors resize-none"
+                  value={newLocation.pdfContent}
+                  onChange={(e) => setNewLocation({...newLocation, pdfContent: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Answer</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Correct answer"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                  value={newLocation.answer}
+                  onChange={(e) => setNewLocation({...newLocation, answer: e.target.value})}
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button 
+                  type="submit"
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl font-black text-sm transition-all"
+                >
+                  CREATE
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowLocationModal(false)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 px-6 py-3 rounded-xl font-black text-sm transition-all"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Clue Modal */}
       {showClueModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-3 sm:p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowClueModal(false)} />
           <div className="relative bg-gray-900 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg sm:text-xl md:text-2xl font-black mb-4 sm:mb-6 md:mb-8 flex items-center gap-2 sm:gap-3">
@@ -758,7 +1119,7 @@ const AdminDashboard = () => {
 
       {/* Question Modal */}
       {showQuestionModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-3 sm:p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowQuestionModal(false)} />
           <div className="relative bg-gray-900 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg sm:max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg sm:text-xl md:text-2xl font-black mb-4 sm:mb-6 md:mb-8 flex items-center gap-2 sm:gap-3">

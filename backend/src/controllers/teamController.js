@@ -8,15 +8,21 @@ const CATEGORIES = ["A", "B", "C", "D", "E"];
 
 export const registerTeam = async (req, res) => {
   try {
-    const { teamId, password } = req.body;
+    const { 
+      teamName, 
+      password, 
+      teamLeader, 
+      teamLeaderEmail, 
+      members 
+    } = req.body;
 
-    if (!teamId || !password) {
-      return res.status(400).json({ message: "Please provide teamId and password" });
+    if (!teamName || !password || !teamLeader || !teamLeaderEmail) {
+      return res.status(400).json({ message: "Please provide all required fields" });
     }
 
-    const existingTeam = await Team.findOne({ name: teamId });
+    const existingTeam = await Team.findOne({ name: teamName });
     if (existingTeam) {
-      return res.status(400).json({ message: "Team ID already taken" });
+      return res.status(400).json({ message: "Team name already taken" });
     }
 
     // 1. Balanced Allocation Algorithm
@@ -27,34 +33,36 @@ export const registerTeam = async (req, res) => {
       }))
     );
 
-    // Find the minimum count among categories
     const minCount = Math.min(...categoryCounts.map((c) => c.count));
-    
-    // Filter categories that have the minimum count
     const bestCategories = categoryCounts
       .filter((c) => c.count === minCount)
       .map((c) => c.name);
     
-    // Randomly select one of the least populated categories
     const category = bestCategories[Math.floor(Math.random() * bestCategories.length)];
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const gameSettings = await GameSettings.findOne();
 
-    // 2. Sync Start Time: If game started, team starts NOW. If not, startTime is null.
+    // 2. Create team with approval pending
     const team = await Team.create({
-      name: teamId,
+      name: teamName,
       password: hashedPassword,
       category,
-      startTime: gameSettings?.isStarted ? new Date() : null,
+      teamLeader,
+      teamLeaderEmail,
+      members: members || [],
+      isApproved: false,
       score: 0,
       currentStep: 1
     });
 
     res.status(201).json({
-      token: generateToken(team._id),
-      role: "player",
-      team
+      message: "Team registered successfully. Awaiting admin approval.",
+      team: {
+        _id: team._id,
+        name: team.name,
+        category: team.category,
+        isApproved: team.isApproved
+      }
     });
   } catch (error) {
     console.error("🔴 Register Error:", error);
@@ -64,11 +72,18 @@ export const registerTeam = async (req, res) => {
 
 export const teamLogin = async (req, res) => {
   try {
-    const { teamId, password } = req.body;
-    const team = await Team.findOne({ name: teamId });
+    const { teamName, password } = req.body;
+    const team = await Team.findOne({ name: teamName });
 
     if (!team) {
       return res.status(401).json({ message: "Team not found." });
+    }
+
+    // Check if team is approved
+    if (!team.isApproved) {
+      return res.status(403).json({ 
+        message: "Team is awaiting admin approval. Please check back later." 
+      });
     }
 
     // Try bcrypt first, fall back to plain text
@@ -126,17 +141,8 @@ export const getGameStatus = async (req, res) => {
 };
 
 export const getLeaderboard = async (req, res) => {
-    // Returns global top or category-specific leaderboard
+    // Global leaderboard only
     try {
-      const { category } = req.query;
-      if (category) {
-        const leaderboard = await Team.find({ category })
-          .sort({ score: -1, penalties: 1, startTime: 1 })
-          .limit(6)
-          .select("name score category currentStep");
-        return res.json(leaderboard);
-      }
-
       const leaderboard = await Team.find()
         .sort({ score: -1, penalties: 1, startTime: 1 })
         .limit(10)

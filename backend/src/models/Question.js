@@ -5,7 +5,7 @@ const questionSchema = new mongoose.Schema({
   category: { type: String, required: true, default: "ALL" }, // A, B, C, D, E or ALL
   question: { type: String, required: true },
   options: [{ type: String }],
-  correctAnswer: { type: String, required: true },
+  correctAnswer: { type: String, required: true, trim: true },
   points: { type: Number, default: 10 },
   imageUrl: { type: String } // Now stores base64 data URLs instead of file paths
 });

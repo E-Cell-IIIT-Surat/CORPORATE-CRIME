@@ -92,7 +92,7 @@ const PlayerDashboard = () => {
   const fetchLeaderboard = async () => {
     try {
       if (teamAPI && typeof teamAPI.getLeaderboard === 'function') {
-        const { data } = await teamAPI.getLeaderboard(team?.category);
+        const { data } = await teamAPI.getLeaderboard();
         setLeaderboard(Array.isArray(data) ? data : []);
       }
     } catch (err) {
@@ -175,10 +175,17 @@ const PlayerDashboard = () => {
     if (!gameStatus.isStarted) return toast.error('Mission not yet authorized by command center.');
     if (gameStatus.isPaused) return toast.error('Mission is currently suspended.');
     
-    const scanToast = toast.loading('Decrypting QR code...');
+    // Don't show loading toast immediately - wait a moment to avoid flickering
+    let scanToast;
+    const toastTimer = setTimeout(() => {
+      scanToast = toast.loading('Decrypting QR code...');
+    }, 300);
+    
     try {
       const { data } = await teamAPI.scanQR(qrCode);
-      toast.success('Access Granted: Intel Decrypted!', { id: scanToast });
+      clearTimeout(toastTimer);
+      if (scanToast) toast.dismiss(scanToast);
+      toast.success('Access Granted: Intel Decrypted!');
       setUnlockedContent(data.pdfContent || data.content || null);
       setLocationId(data.locationId);
       setCurrentChallenge(data.challenge);
@@ -186,14 +193,16 @@ const PlayerDashboard = () => {
       setShowScanner(false);
       fetchStatus();
     } catch (err) {
+      clearTimeout(toastTimer);
+      if (scanToast) toast.dismiss(scanToast);
       const status = err.response?.status;
       if (status === 400 || status === 429 || status === 404) {
         const remaining = err.response?.data?.remainingSeconds || 60;
         setCooldown(remaining);
         setShowScanner(false);
-        toast.error(err.response?.data?.message || 'Security breach detected. Lockout initiated.', { id: scanToast });
+        toast.error(err.response?.data?.message || 'Security breach detected. Lockout initiated.');
       } else {
-        toast.error(err.response?.data?.message || 'Scan failed', { id: scanToast });
+        toast.error(err.response?.data?.message || 'Scan failed');
       }
     }
   };
@@ -252,298 +261,347 @@ const PlayerDashboard = () => {
   };
 
   if (!team) return (
-    <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center justify-center gap-6">
+    <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center justify-center gap-8">
       <div className="relative">
-        <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-        <ShieldIcon className="absolute inset-0 m-auto text-blue-500 animate-pulse" size={24} />
+        <div className="w-20 h-20 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+        <ShieldIcon className="absolute inset-0 m-auto text-blue-500" size={32} />
       </div>
-      <p className="text-blue-400 font-black tracking-[0.3em] uppercase animate-pulse">Establishing Secure Connection</p>
+      <div className="text-center space-y-2">
+        <p className="text-blue-500 font-black text-xl tracking-wider uppercase animate-pulse">INITIALIZING</p>
+        <p className="text-gray-600 font-bold text-xs uppercase tracking-widest">Corporate Intelligence Network</p>
+      </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-[#020617] text-white w-full font-sans selection:bg-blue-500/30">
-      <nav className="bg-[#0c1222]/80 backdrop-blur-xl border-b border-white/5 p-3 sm:p-4 sticky top-0 z-40 shadow-2xl">
-        <div className="max-w-4xl mx-auto flex justify-between items-center gap-3 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="bg-blue-600 p-2 sm:p-2.5 rounded-lg sm:rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.4)] flex-shrink-0">
-              <ShieldIcon size={18} className="text-white sm:size-5" />
+      <style>{`
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+          background: rgba(59, 130, 246, 0.5);
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(59, 130, 246, 0.7);
+        }
+      `}</style>
+      <nav className="bg-[#0c1222]/80 backdrop-blur-xl border-b border-blue-500/20 p-3 sm:p-4 sticky top-0 z-40 shadow-2xl">
+        <div className="max-w-7xl mx-auto flex justify-between items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="bg-linear-to-br from-blue-500 to-blue-600 p-2 sm:p-3 rounded-lg shadow-[0_0_25px_rgba(37,99,235,0.5)] shrink-0">
+              <ShieldIcon size={20} className="text-white sm:size-6" strokeWidth={2.5} />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="font-black text-sm sm:text-lg tracking-tight uppercase bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent truncate">
+              <span className="font-black text-base sm:text-xl tracking-tight uppercase text-blue-500 truncate">
                 {team.name}
               </span>
-              <div className="flex items-center gap-1 sm:gap-2 text-[8px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-widest min-w-0">
-                <div className="w-0.5 h-0.5 sm:w-1 sm:h-1 bg-blue-400 rounded-full animate-pulse flex-shrink-0" />
-                <span className="truncate">{team.category} Div</span>
+              <div className="flex items-center gap-2 text-[9px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" />
+                <span>OPERATIVE STATUS</span>
                 {isQualified && (
-                  <span className="ml-auto flex-shrink-0 bg-green-600 text-black px-1.5 py-0.5 sm:px-2 rounded text-[7px] sm:text-[9px] font-extrabold">OK</span>
+                  <span className="bg-green-500 text-black px-2 py-0.5 rounded text-[8px] font-extrabold ml-2">VERIFIED</span>
                 )}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Clock</span>
-              <div className="flex items-center gap-2 bg-black/40 px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg sm:rounded-xl border border-white/5">
-                <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${gameStatus.isStarted && !gameStatus.isPaused ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-yellow-500'}`} />
-                <span className="font-mono font-black text-blue-400 tracking-wider tabular-nums text-[10px] sm:text-xs">{elapsedTime}</span>
-              </div>
-            </div>
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <button 
               onClick={() => setShowLeaderboard(!showLeaderboard)}
-              className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white transition-all shadow-lg flex-shrink-0"
-              title="Leaderboard"
+              className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-500 hover:bg-blue-500 hover:text-white transition-all shadow-lg"
+              title="Rankings"
             >
-              <Trophy size={18} className="sm:size-5" />
+              <Trophy size={20} />
             </button>
             <button 
               onClick={handleLogout} 
-              className="bg-red-500/10 p-2 sm:p-2.5 rounded-lg sm:rounded-xl hover:bg-red-500 hover:text-white text-red-500 transition-all border border-red-500/10 shadow-lg flex-shrink-0"
-              title="Logout"
+              className="bg-red-500/20 p-2.5 rounded-lg hover:bg-red-500 hover:text-white text-red-400 transition-all border border-red-500/30 shadow-lg"
+              title="Exit"
             >
-              <LogOut size={18} className="sm:size-5" />
+              <LogOut size={20} />
             </button>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-4xl mx-auto p-3 sm:p-4 md:p-8 space-y-6 sm:space-y-8">
+      <main className="max-w-7xl mx-auto p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
+        {/* Mission Header */}
+        <div className="bg-linear-to-r from-black via-blue-950/20 to-black border border-blue-500/30 rounded-xl p-6 shadow-2xl">
+          <div className="flex flex-col gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tight mb-2">
+                MISSION DASHBOARD <span className="text-blue-500">// PHASE {team.currentStep}</span>
+              </h1>
+              <p className="text-gray-400 text-sm font-medium">Corporate Intelligence Operations</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              <div className="bg-black/80 border border-blue-500/30 rounded-lg px-2 sm:px-4 py-2 sm:py-3">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                  <Trophy size={14} className="text-blue-500 sm:size-4" />
+                  <span className="text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-wider">Score</span>
+                </div>
+                <div className="text-lg sm:text-2xl font-black text-blue-500">{team.score.toString().padStart(3, '0')}</div>
+              </div>
+              <div className="bg-black/80 border border-blue-500/30 rounded-lg px-2 sm:px-4 py-2 sm:py-3">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                  <Activity size={14} className="text-blue-500 sm:size-4" />
+                  <span className="text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-wider">Rank</span>
+                </div>
+                <div className="text-lg sm:text-2xl font-black text-blue-500">#{leaderboard.findIndex(t => t._id === team._id) + 1 || '01'}</div>
+              </div>
+              <div className="bg-black/80 border border-blue-500/30 rounded-lg px-2 sm:px-4 py-2 sm:py-3">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                  <Clock size={14} className="text-blue-500 sm:size-4" />
+                  <span className="text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-wider">Time</span>
+                </div>
+                <div className="text-lg sm:text-2xl font-black text-blue-500">{elapsedTime}</div>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Full Screen Status Overlays */}
         {!gameStatus.isStarted && (
-          <div className="fixed inset-0 z-[200] bg-[#020617] flex flex-col items-center justify-center p-3 sm:p-6 overflow-y-auto">
-            {/* Cyber Background Animation */}
+          <div className="fixed inset-0 z-200 bg-[#020617] flex flex-col items-center justify-center p-6">
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] md:w-[800px] h-[400px] sm:h-[600px] md:h-[800px] bg-blue-600/5 blur-[60px] sm:blur-[100px] md:blur-[120px] rounded-full animate-pulse" />
-              <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-10 bg-[length:100%_2px,3px_100%] pointer-events-none" />
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.05]" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-blue-500/5 blur-[120px] rounded-full animate-pulse" />
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]" />
             </div>
 
-            <div className="relative z-20 max-w-sm sm:max-w-lg md:max-w-2xl w-full text-center space-y-6 sm:space-y-12">
+            <div className="relative z-20 max-w-2xl w-full text-center space-y-12">
               <div className="relative inline-block">
-                <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 bg-blue-600/10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-center mx-auto border border-blue-500/30 shadow-[0_0_60px_rgba(37,99,235,0.2)] animate-pulse">
-                  <ShieldAlert size={48} className="text-blue-500 sm:size-16 md:size-32" />
+                <div className="w-48 h-48 bg-linear-to-br from-blue-500/20 to-blue-600/10 rounded-3xl flex items-center justify-center mx-auto border-2 border-blue-500/30 shadow-[0_0_80px_rgba(37,99,235,0.3)]">
+                  <ShieldIcon size={96} className="text-blue-500" strokeWidth={1.5} />
                 </div>
-                <div className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 w-10 h-10 sm:w-12 sm:h-12 bg-red-600 rounded-lg sm:rounded-2xl flex items-center justify-center border-3 sm:border-4 border-[#020617] animate-bounce shadow-lg">
-                  <Clock size={16} className="text-white sm:size-5" />
+                <div className="absolute -top-4 -right-4 w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center border-4 border-[#020617] shadow-2xl">
+                  <Clock size={28} className="text-black animate-pulse" />
                 </div>
               </div>
 
-              <div className="space-y-2 sm:space-y-4">
-                <h2 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">
-                  Authorization <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-600">Pending</span>
+              <div className="space-y-4">
+                <h2 className="text-6xl font-black text-white tracking-tighter uppercase leading-none">
+                  OPERATION <span className="text-blue-500">STANDBY</span>
                 </h2>
-                <div className="flex items-center justify-center gap-2 sm:gap-4">
-                  <div className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent to-blue-500/50" />
-                  <p className="text-blue-400 font-black text-[9px] sm:text-xs md:text-sm uppercase tracking-[0.4em]">System Standby</p>
-                  <div className="h-px w-8 sm:w-12 bg-gradient-to-l from-transparent to-blue-500/50" />
+                <div className="flex items-center justify-center gap-4">
+                  <div className="h-px w-12 bg-linear-to-r from-transparent to-blue-500/50" />
+                  <p className="text-blue-500 font-black text-sm uppercase tracking-[0.3em]">Awaiting Deployment</p>
+                  <div className="h-px w-12 bg-linear-to-l from-transparent to-blue-500/50" />
                 </div>
               </div>
               
-              <div className="bg-[#0c1222]/80 backdrop-blur-3xl p-4 sm:p-8 md:p-12 rounded-2xl sm:rounded-[3.5rem] border border-white/5 shadow-2xl space-y-4 sm:space-y-8 relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+              <div className="bg-black/80 backdrop-blur-xl p-12 rounded-3xl border-2 border-blue-500/20 shadow-2xl space-y-8">
+                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-blue-500 to-transparent" />
                 
-                <p className="text-gray-400 font-bold text-xs sm:text-sm md:text-lg leading-relaxed px-2">
-                  Uplink for <span className="text-white uppercase text-[9px] sm:text-xs md:text-base">TEAM {team?.name || '---'}</span>. Awaiting deployment signal.
+                <p className="text-gray-300 font-bold text-lg leading-relaxed">
+                  Agent <span className="text-blue-500 uppercase font-black">{team?.name || '---'}</span> cleared for deployment. Stand by for mission brief.
                 </p>
                 
-                <div className="flex flex-col items-center gap-3 sm:gap-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
-                  </div>
-                  <div className="px-3 sm:px-6 py-1.5 sm:py-2 bg-blue-500/10 rounded-full border border-blue-500/20">
-                    <span className="text-[8px] sm:text-[10px] font-black text-blue-400 uppercase tracking-[0.5em] animate-pulse">Syncing</span>
-                  </div>
+                <div className="flex justify-center gap-3">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" />
                 </div>
               </div>
 
-              <div className="flex flex-col items-center gap-3 sm:gap-4">
-                <div className="flex items-center gap-2 sm:gap-3 text-gray-600">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                  <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em]">Sync Active</span>
-                </div>
-                <button 
-                  onClick={() => { localStorage.clear(); navigate('/login'); }}
-                  className="text-[8px] sm:text-[10px] font-black text-gray-700 hover:text-red-500 uppercase tracking-[0.4em] transition-colors"
-                >
-                  Terminate
-                </button>
-              </div>
+              <button 
+                onClick={() => { localStorage.clear(); navigate('/login'); }}
+                className="text-xs font-black text-gray-600 hover:text-red-500 uppercase tracking-widest transition-colors"
+              >
+                Abort Mission
+              </button>
             </div>
           </div>
         )}
 
         {gameStatus.isStarted && gameStatus.isPaused && (
-          <div className="fixed inset-0 z-[100] bg-[#020617]/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6">
-            <div className="relative max-w-sm w-full">
-              <div className="absolute inset-0 bg-yellow-500/5 blur-[80px] rounded-full" />
-              <div className="bg-[#0c1222] border border-yellow-500/20 p-6 sm:p-12 rounded-2xl sm:rounded-[3.5rem] shadow-2xl relative overflow-hidden text-center">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-8 border border-yellow-500/20">
-                  <Pause size={32} className="text-yellow-500 sm:size-10" />
+          <div className="fixed inset-0 z-100 bg-[#020617]/95 backdrop-blur-xl flex items-center justify-center p-6">
+            <div className="relative max-w-md w-full">
+              <div className="absolute inset-0 bg-blue-500/10 blur-[100px] rounded-full" />
+              <div className="bg-black border-2 border-blue-500/30 p-12 rounded-3xl shadow-2xl relative text-center">
+                <div className="w-24 h-24 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-8 border-2 border-blue-500/40">
+                  <Pause size={48} className="text-blue-500" />
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white mb-3 sm:mb-4 uppercase tracking-tighter">Paused</h2>
-                <p className="text-gray-400 font-bold text-xs sm:text-sm uppercase tracking-[0.2em] leading-relaxed">
-                  Tactical halt. Stand by for signal.
+                <h2 className="text-4xl font-black text-white mb-4 uppercase tracking-tight">OPERATION PAUSED</h2>
+                <p className="text-gray-400 font-bold text-sm uppercase tracking-wider">
+                  Mission temporarily suspended
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-8">
-          <div className="bg-[#0c1222] p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-[2.5rem] border border-white/5 relative overflow-hidden group hover:border-green-500/30 transition-all duration-500 shadow-xl">
-            <div className="absolute top-0 right-0 p-3 sm:p-6 opacity-[0.03] group-hover:scale-110 transition-transform">
-              <Award size={40} className="sm:size-20" />
+        {/* Active Infractions Alert */}
+        {team.penalties > 0 && (
+          <div className="bg-linear-to-r from-red-950/40 to-black border border-red-500/30 rounded-lg p-4 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-500/20 p-2 rounded">
+                <AlertCircle size={24} className="text-red-500" />
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-red-400 uppercase tracking-wider mb-1">Active Infractions</div>
+                <div className="text-3xl font-black text-red-500">-{team.penalties * 5} PTS</div>
+              </div>
             </div>
-            <div className="text-gray-500 text-[8px] sm:text-[10px] font-black mb-1 sm:mb-2 uppercase tracking-[0.3em] group-hover:text-green-500 transition-colors">Score</div>
-            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-green-400 tracking-tighter drop-shadow-[0_0_15px_rgba(74,222,128,0.3)]">{team.score}</div>
           </div>
-          <div className="bg-[#0c1222] p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-[2.5rem] border border-white/5 relative overflow-hidden group hover:border-blue-500/30 transition-all duration-500 shadow-xl">
-            <div className="absolute top-0 right-0 p-3 sm:p-6 opacity-[0.03] group-hover:scale-110 transition-transform">
-              <MapPin size={40} className="sm:size-20" />
-            </div>
-            <div className="text-gray-500 text-[8px] sm:text-[10px] font-black mb-1 sm:mb-2 uppercase tracking-[0.3em] group-hover:text-blue-500 transition-colors">Objective</div>
-            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-blue-400 tracking-tighter drop-shadow-[0_0_15px_rgba(96,165,250,0.3)]">#{team.currentStep}</div>
-          </div>
-        </div>
+        )}
 
-        {/* Main Content Area */}
+        {/* Intel Target Card */}
         <div className="relative">
           {locationId === null ? (
-            <div className="bg-[#0c1222] border-2 border-blue-500/20 p-4 sm:p-6 md:p-8 lg:p-12 rounded-xl sm:rounded-[2.5rem] relative overflow-hidden shadow-[0_0_50px_rgba(37,99,235,0.1)] animate-in fade-in zoom-in duration-500 group">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+            <div className="bg-linear-to-br from-blue-950/20 via-black to-black border-2 border-blue-500/30 p-6 md:p-10 rounded-xl relative overflow-hidden shadow-[0_0_50px_rgba(37,99,235,0.15)]">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl" />
               
-              <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-blue-500/10 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full mb-6 sm:mb-10 border border-blue-500/20 backdrop-blur-md">
-                  <Search size={12} className="text-blue-400 animate-pulse sm:size-4" />
-                  <span className="text-[8px] sm:text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Intel Sync</span>
+              {/* Intel Target Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <Target size={24} className="text-blue-500" />
+                  <span className="text-sm font-black text-blue-500 uppercase tracking-wider">INTEL_TARGET_{String(team.currentStep).padStart(2, '0')}</span>
                 </div>
-                
-                <div className="mb-6 sm:mb-12 max-w-sm sm:max-w-2xl">
-                  {clueImage && (
+                <div className="bg-blue-500/20 border border-blue-500/30 px-3 py-1 rounded">
+                  <span className="text-xs font-black text-blue-500">★ PRIORITY</span>
+                </div>
+              </div>
+              
+              {/* Intel Image/Content */}
+              <div className="relative bg-black/60 border border-blue-500/20 rounded-lg overflow-hidden mb-6 group">
+                {clueImage ? (
+                  <div className="relative">
                     <img
                       src={clueImage}
-                      alt="Clue"
-                      className="w-full max-h-40 sm:max-h-60 md:max-h-64 object-cover rounded-lg sm:rounded-2xl border border-blue-500/20 mb-4 sm:mb-6 shadow-[0_0_30px_rgba(37,99,235,0.2)]"
+                      alt="Intel Target"
+                      className="w-full h-auto max-h-96 object-contain bg-black"
                     />
-                  )}
-                  <p className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-black leading-snug sm:leading-tight text-white tracking-tight italic">
-                    "{clue}"
-                  </p>
-                </div>
-                
-                {cooldown > 0 ? (
-                  <div className="w-full max-w-xs sm:max-w-sm bg-red-600/10 border border-red-600/30 text-red-500 p-4 sm:p-8 rounded-lg sm:rounded-2xl flex flex-col items-center gap-3 sm:gap-4 relative overflow-hidden">
-                    <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-black uppercase tracking-[0.2em]">
-                      <ShieldAlert size={16} className="animate-bounce sm:size-5" />
-                      Lockout
-                    </div>
-                    <div className="text-4xl sm:text-5xl font-black font-mono tabular-nums">{cooldown}s</div>
-                    <div className="w-full bg-red-600/20 h-1 sm:h-1.5 rounded-full mt-1 sm:mt-2">
-                      <div 
-                        className="bg-red-600 h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(220,38,38,0.5)]" 
-                        style={{ width: `${(cooldown/60)*100}%` }}
-                      />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <p className="text-white text-base sm:text-lg font-bold drop-shadow-lg">{clue}</p>
                     </div>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setShowScanner(true)}
-                    className="w-full max-w-xs sm:max-w-md group relative h-14 sm:h-20 overflow-hidden rounded-lg sm:rounded-2xl bg-blue-600 transition-all active:scale-[0.98] shadow-[0_10px_40px_rgba(37,99,235,0.3)]"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                    <div className="flex items-center justify-center gap-2 sm:gap-4 text-sm sm:text-xl font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white">
-                      <Search size={16} className="group-hover:rotate-12 transition-transform sm:size-6" />
-                      <span className="hidden xs:inline">Scan</span><span className="inline xs:hidden">QR</span>
-                    </div>
-                  </button>
+                  <div className="p-8 text-center">
+                    <Lock size={48} className="text-blue-500/30 mx-auto mb-4" />
+                    <p className="text-xl font-bold text-white mb-2">Decryption Key Required</p>
+                    <p className="text-sm text-gray-400">{clue}</p>
+                  </div>
                 )}
               </div>
+              {/* Action Button */}
+              <button
+                onClick={() => setShowScanner(true)}
+                disabled={cooldown > 0}
+                className={`w-full group flex items-center justify-center gap-3 px-8 py-4 rounded-lg font-black text-sm uppercase tracking-wider transition-all shadow-xl ${
+                  cooldown > 0 
+                    ? 'bg-red-900/40 border-2 border-red-500/50 text-red-400 cursor-not-allowed' 
+                    : 'bg-linear-to-r from-blue-500 to-blue-600 border-2 border-blue-400 text-white hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] hover:scale-[1.02] active:scale-95'
+                }`}
+              >
+                {cooldown > 0 ? (
+                  <>
+                    <Clock size={20} className="animate-spin" />
+                    <span>COOLDOWN: {cooldown}s</span>
+                  </>
+                ) : (
+                  <>
+                    <Terminal size={20} className="group-hover:rotate-12 transition-transform" />
+                    <span>ENGAGE REMOTE SCANNER</span>
+                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
             </div>
           ) : (
-            <div className="bg-[#0c1222] border-2 border-red-500/20 p-4 sm:p-6 md:p-8 lg:p-12 rounded-xl sm:rounded-[2.5rem] relative overflow-hidden shadow-[0_0_80px_rgba(239,68,68,0.15)] animate-in fade-in zoom-in duration-700">
-              {/* Decorative Background */}
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 right-0 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-red-600/10 blur-[80px] sm:blur-[150px] rounded-full" />
-                <div className="absolute bottom-0 left-0 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-blue-600/10 blur-[80px] sm:blur-[150px] rounded-full" />
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.08]" />
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.3)_50%),linear-gradient(90deg,rgba(255,0,0,0.05),rgba(0,255,0,0.02),rgba(0,0,255,0.05))] z-10 bg-[length:100%_3px,4px_100%] pointer-events-none" />
-              </div>
-
-              <div className="absolute top-0 left-0 w-full h-1 sm:h-1.5 bg-gradient-to-r from-transparent via-red-600 to-transparent" />
+            <div className="bg-[#0a0e1a] border border-red-500/30 p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-3xl relative overflow-hidden shadow-[0_0_60px_rgba(239,68,68,0.2)] animate-in fade-in zoom-in duration-500 max-w-2xl mx-auto">
+              {/* Decorative Top Border */}
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-linear-to-r from-transparent via-red-500 to-transparent" />
               
-              <div className="relative z-20 flex flex-col items-center">
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-red-500/15 px-3 sm:px-6 py-1.5 sm:py-2.5 rounded-full mb-6 sm:mb-10 border border-red-500/30 backdrop-blur-xl">
-                  <ShieldAlert size={12} className="text-red-500 animate-pulse sm:size-4" />
-                  <span className="text-[8px] sm:text-[11px] font-black text-red-500 uppercase tracking-[0.4em]">Challenge</span>
+              {/* Background Effects */}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/5 blur-[100px] rounded-full" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600/5 blur-[100px] rounded-full" />
+              </div>
+              
+              <div className="relative z-20 space-y-6 sm:space-y-8">
+                {/* Challenge Badge */}
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center gap-2 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/30">
+                    <ShieldAlert size={14} className="text-red-500" />
+                    <span className="text-[10px] sm:text-xs font-black text-red-500 uppercase tracking-[0.3em]">Challenge</span>
+                  </div>
                 </div>
                 
-                <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 sm:mb-8 tracking-tighter uppercase italic text-center drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                  Classified <span className="text-red-600">Transmission</span>
+                {/* Title */}
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-center uppercase tracking-tight">
+                  <span className="text-white">Classified </span>
+                  <span className="text-red-500">Transmission</span>
                 </h2>
                 
-                <div className="bg-black/90 backdrop-blur-3xl p-4 sm:p-8 md:p-10 lg:p-14 rounded-lg sm:rounded-3xl border border-white/10 mb-8 sm:mb-12 shadow-[0_30px_60px_rgba(0,0,0,0.5)] w-full border-l-red-600 border-l-[4px] sm:border-l-[6px] relative group transition-all">
-                  <div className="absolute top-3 sm:top-5 right-4 sm:right-8 flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-ping" />
-                    <span className="text-[9px] sm:text-[11px] font-black text-red-600/70 uppercase tracking-widest italic">Live</span>
+                {/* PDF Content - Cleaner Display */}
+                <div className="bg-[#050812] border-l-4 border-red-500 p-4 sm:p-6 rounded-lg relative">
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                    <span className="text-[9px] font-black text-red-500/70 uppercase tracking-wider">Live</span>
                   </div>
-                  <p className="text-base sm:text-xl md:text-2xl lg:text-3xl text-gray-100 leading-snug font-bold italic tracking-tight text-center">
+                  <p className="text-sm sm:text-base md:text-lg text-gray-200 leading-relaxed font-medium italic pr-12">
                     "{unlockedContent || 'Intel stream corrupted. Challenge required.'}"
                   </p>
                 </div>
 
                 {currentChallenge ? (
-                  <div className="w-full max-w-sm sm:max-w-2xl md:max-w-3xl mb-8 sm:mb-12 space-y-4 sm:space-y-8 animate-in slide-in-from-bottom-6 duration-700">
-                    <div className="flex items-center gap-2 sm:gap-4">
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                      <span className="text-[9px] sm:text-[11px] font-black text-gray-500 uppercase tracking-[0.5em] whitespace-nowrap">Challenge</span>
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                  <div className="space-y-6">
+                    {/* Challenge Label */}
+                    <div className="text-center">
+                      <span className="text-xs font-black text-gray-500 uppercase tracking-[0.3em]">Challenge</span>
                     </div>
                     
+                    {/* Challenge Image */}
                     {currentChallenge.imageUrl && (
                       <img
                         src={currentChallenge.imageUrl}
                         alt="Challenge"
-                        className="w-full max-h-48 sm:max-h-60 md:max-h-80 object-cover rounded-lg sm:rounded-2xl md:rounded-3xl border border-white/10 mb-6 sm:mb-10 shadow-[0_0_40px_rgba(59,130,246,0.2)]"
+                        className="w-full h-auto max-h-64 object-contain rounded-lg border border-white/10 bg-black"
                       />
                     )}
-                    <p className="text-center text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-blue-500 mb-6 sm:mb-12 italic leading-tight tracking-tight px-2">
+                    
+                    {/* Question */}
+                    <p className="text-center text-base sm:text-lg md:text-xl font-bold text-blue-400 leading-relaxed px-2">
                       {currentChallenge.text}
                     </p>
                     
+                    {/* Options */}
                     {currentChallenge.options && currentChallenge.options.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
+                      <div className="space-y-2 sm:space-y-3">
                         {currentChallenge.options.map((opt, i) => (
                           <button
                             key={i}
                             onClick={() => setAnswer(opt)}
-                            className={`p-3 sm:p-5 md:p-7 rounded-lg sm:rounded-2xl border-2 transition-all font-black text-xs sm:text-sm md:text-base uppercase tracking-widest text-left relative overflow-hidden group shadow-lg ${
+                            className={`w-full p-4 rounded-xl border transition-all font-bold text-sm text-left flex items-center gap-3 ${
                               answer === opt 
-                              ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_30px_rgba(37,99,235,0.5)] scale-[1.02]' 
-                              : 'bg-black/60 border-white/10 text-gray-400 hover:border-blue-600/50 hover:text-white hover:bg-black/80'
+                              ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]' 
+                              : 'bg-[#050812] border-white/10 text-gray-300 hover:border-blue-600/30 hover:bg-[#0a0e1a]'
                             }`}
                           >
-                            <div className="flex items-center gap-2 sm:gap-5">
-                              <span className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-black transition-colors flex-shrink-0 ${answer === opt ? 'bg-white text-blue-600' : 'bg-white/10 text-gray-600'}`}>
-                                {String.fromCharCode(65 + i)}
-                              </span>
-                              <span className="truncate">{opt}</span>
-                            </div>
+                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                              answer === opt ? 'bg-white text-blue-600' : 'bg-white/5 text-gray-600'
+                            }`}>
+                              {String.fromCharCode(65 + i)}
+                            </span>
+                            <span className="uppercase tracking-wide">{opt}</span>
                           </button>
                         ))}
                       </div>
                     ) : (
-                      <div className="w-full space-y-3 sm:space-y-4">
-                        <div className="flex justify-between items-end px-2 sm:px-3">
-                          <label className="text-[9px] sm:text-[11px] font-black text-gray-500 uppercase tracking-[0.4em]">Key</label>
-                          <span className="text-[8px] sm:text-[9px] font-bold text-red-600/80 uppercase tracking-widest">Manual</span>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center px-2">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Access Key</label>
+                          <span className="text-[9px] font-bold text-red-500/70 uppercase tracking-wide">Manual Entry</span>
                         </div>
                         <input
                           type="text"
-                          className="w-full bg-black/90 border-2 border-white/10 rounded-lg sm:rounded-2xl px-3 sm:px-10 py-3 sm:py-7 text-white focus:outline-none focus:border-red-600/60 transition-all font-mono tracking-[0.3em] sm:tracking-[0.4em] uppercase text-center text-lg sm:text-3xl placeholder:text-gray-900 shadow-2xl"
+                          className="w-full bg-[#050812] border border-white/10 rounded-xl px-6 py-4 text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono tracking-[0.3em] uppercase text-center text-xl placeholder:text-gray-800"
                           placeholder="••••"
                           value={answer}
                           onChange={(e) => setAnswer(e.target.value)}
@@ -554,23 +612,21 @@ const PlayerDashboard = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="w-full max-w-sm mb-8 sm:mb-12 space-y-4 sm:space-y-6 animate-in slide-in-from-bottom-6 duration-700">
-                    <div className="bg-orange-600/10 border border-orange-600/30 p-3 sm:p-6 rounded-lg sm:rounded-2xl flex flex-col items-center gap-2 sm:gap-3 text-center">
-                      <Loader2 className="text-orange-500 animate-spin size-5 sm:size-6" />
-                      <p className="text-orange-500 font-black text-xs sm:text-sm uppercase tracking-widest">Signal Weak</p>
-                      <p className="text-gray-400 text-[10px] sm:text-xs font-bold leading-relaxed">
-                        Retrieval failed. Use manual key.
-                      </p>
+                  <div className="space-y-4">
+                    <div className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-lg flex flex-col items-center gap-2 text-center">
+                      <Loader2 className="text-orange-500 animate-spin size-5" />
+                      <p className="text-orange-500 font-bold text-xs uppercase tracking-wide">Challenge Loading</p>
+                      <p className="text-gray-500 text-xs font-medium">Attempting retrieval...</p>
                     </div>
                     
-                    <div className="space-y-2 sm:space-y-4">
-                      <div className="flex justify-between items-end px-2 sm:px-3">
-                        <label className="text-[9px] sm:text-[11px] font-black text-gray-500 uppercase tracking-[0.4em]">Key</label>
-                        <span className="text-[8px] sm:text-[9px] font-bold text-red-600/80 uppercase tracking-widest">Bypass</span>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center px-2">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Bypass Key</label>
+                        <span className="text-[9px] font-bold text-red-500/70 uppercase tracking-wide">Emergency</span>
                       </div>
                       <input
                         type="text"
-                        className="w-full bg-black/90 border-2 border-white/10 rounded-lg sm:rounded-2xl px-3 sm:px-10 py-3 sm:py-7 text-white focus:outline-none focus:border-red-600/60 transition-all font-mono tracking-[0.3em] sm:tracking-[0.4em] uppercase text-center text-lg sm:text-3xl placeholder:text-gray-900 shadow-2xl"
+                        className="w-full bg-[#050812] border border-white/10 rounded-xl px-6 py-4 text-white focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono tracking-[0.3em] uppercase text-center text-xl placeholder:text-gray-800"
                         placeholder="••••"
                         value={answer}
                         onChange={(e) => setAnswer(e.target.value)}
@@ -581,23 +637,25 @@ const PlayerDashboard = () => {
                   </div>
                 )}
 
-                <div className="w-full max-w-xs sm:max-w-md space-y-4 sm:space-y-6">
+                {/* Action Buttons */}
+                <div className="space-y-3 pt-2">
                   <button
                     onClick={handleVerifyAnswer}
-                    className="w-full group relative h-12 sm:h-20 md:h-24 overflow-hidden rounded-lg sm:rounded-2xl bg-red-600 transition-all active:scale-[0.98] shadow-[0_20px_50px_rgba(220,38,38,0.4)]"
+                    disabled={!answer.trim()}
+                    className="w-full group relative h-14 sm:h-16 overflow-hidden rounded-xl bg-red-600 hover:bg-red-500 disabled:bg-gray-800 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-[0_10px_30px_rgba(220,38,38,0.3)] disabled:shadow-none"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                    <div className="flex items-center justify-center gap-2 sm:gap-5 text-xs sm:text-lg md:text-2xl font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white">
-                      <ShieldIcon size={16} className="group-hover:scale-110 group-hover:rotate-12 transition-transform sm:size-7 md:size-8" />
-                      <span className="hidden xs:inline">Verify</span><span className="inline xs:hidden">OK</span>
+                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500" />
+                    <div className="flex items-center justify-center gap-3 text-sm sm:text-base font-black uppercase tracking-[0.2em] text-white">
+                      <ShieldIcon size={18} className="group-hover:scale-110 transition-transform sm:size-5" />
+                      <span>OK</span>
                     </div>
                   </button>
 
                   <button 
                     onClick={() => { setUnlockedContent(null); setLocationId(null); setCurrentChallenge(null); setAnswer(''); }}
-                    className="flex items-center justify-center gap-2 sm:gap-4 w-full text-[9px] sm:text-[11px] font-black text-gray-600 hover:text-red-500 uppercase tracking-[0.5em] transition-all py-2 sm:py-3 group"
+                    className="flex items-center justify-center gap-2 w-full text-[10px] font-black text-gray-600 hover:text-red-500 uppercase tracking-[0.3em] transition-colors py-2 group"
                   >
-                    <X size={16} className="group-hover:rotate-90 transition-transform" /> Abort Operation
+                    <X size={14} className="group-hover:rotate-90 transition-transform" /> Abort Operation
                   </button>
                 </div>
               </div>
@@ -608,40 +666,40 @@ const PlayerDashboard = () => {
         {/* Leaderboard Section */}
         {showLeaderboard && (
           <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="bg-[#0c1222] border border-white/5 rounded-lg sm:rounded-[2.5rem] overflow-hidden shadow-2xl">
-              <div className="p-3 sm:p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <Trophy className="text-yellow-500 size-4 sm:size-5" />
-                  <h3 className="font-black text-xs sm:text-sm uppercase tracking-widest">Standings</h3>
+            <div className="bg-black border-2 border-blue-500/30 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="p-6 border-b border-blue-500/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-linear-to-r from-blue-950/20 to-black">
+                <div className="flex items-center gap-3">
+                  <Trophy className="text-blue-500 size-5 sm:size-6" />
+                  <h3 className="font-black text-base sm:text-lg uppercase tracking-wider text-white">GLOBAL RANKINGS</h3>
                 </div>
-                <button onClick={() => setShowLeaderboard(false)} className="text-gray-500 hover:text-white p-1">
-                  <X size={18} className="sm:size-5" />
+                <button onClick={() => setShowLeaderboard(false)} className="text-gray-500 hover:text-blue-500 p-2 rounded-lg hover:bg-blue-500/10 transition-all">
+                  <X size={20} className="sm:size-6" />
                 </button>
               </div>
-              <div className="p-2 sm:p-4 space-y-1.5 sm:space-y-2 max-h-80 overflow-y-auto">
+              <div className="p-4 space-y-2 max-h-96 overflow-y-auto" style={{scrollbarWidth: 'thin', scrollbarColor: 'rgba(59, 130, 246, 0.5) rgba(0, 0, 0, 0.3)'}}>
                 {Array.isArray(leaderboard) && leaderboard.map((t, idx) => (
                   <div 
                     key={t._id} 
-                    className={`flex items-center justify-between p-2 sm:p-4 rounded-lg sm:rounded-2xl transition-all gap-2 text-xs sm:text-sm ${t._id === team?._id ? 'bg-blue-600/20 border border-blue-500/30' : 'bg-black/20'}`}
+                    className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 rounded-xl transition-all gap-2 sm:gap-3 ${t._id === team?._id ? 'bg-blue-500/20 border-2 border-blue-500/50' : 'bg-black/40 border border-blue-500/10 hover:border-blue-500/30'}`}
                   >
-                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                      <span className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-black text-xs flex-shrink-0 ${idx === 0 ? 'bg-yellow-500 text-black' : 'bg-gray-800 text-gray-400'}`}>
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 w-full sm:w-auto">
+                      <span className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-black text-xs sm:text-sm shrink-0 ${idx === 0 ? 'bg-linear-to-br from-blue-400 to-blue-600 text-white shadow-lg' : idx === 1 ? 'bg-gray-400 text-black' : idx === 2 ? 'bg-blue-700 text-white' : 'bg-gray-800 text-gray-400'}`}>
                         {idx + 1}
                       </span>
-                      <div className="flex items-center gap-1 sm:gap-3 min-w-0">
-                        <span className="font-bold text-gray-200 truncate">{t.name}</span>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-3 min-w-0 flex-1">
+                        <span className="font-black text-white truncate text-sm sm:text-base">{t.name}</span>
                         {idx < 2 && (
-                          <span className="text-[8px] sm:text-[10px] font-extrabold uppercase bg-green-600 text-black px-1.5 sm:px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0">OK</span>
+                          <span className="text-[10px] sm:text-xs font-black uppercase bg-green-500 text-black px-2 py-0.5 sm:py-1 rounded whitespace-nowrap shrink-0">QUALIFIED</span>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 sm:gap-6 flex-shrink-0">
-                      <div className="text-right">
-                        <div className="text-[7px] sm:text-[8px] font-black text-gray-500 uppercase tracking-widest">Pts</div>
-                        <div className="font-black text-blue-400 text-xs sm:text-sm">{t.score}</div>
+                    <div className="flex items-center gap-4 sm:gap-6 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
+                      <div className="text-left sm:text-right">
+                        <div className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Score</div>
+                        <div className="font-black text-blue-500 text-base sm:text-lg">{t.score}</div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-[7px] sm:text-[8px] font-black text-gray-500 uppercase tracking-widest">Step</div>
+                      <div className="text-left sm:text-right">
+                        <div className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1">Phase</div>
                         <div className="font-black text-gray-300 text-xs sm:text-sm">#{t.currentStep}</div>
                       </div>
                     </div>
@@ -654,9 +712,9 @@ const PlayerDashboard = () => {
 
         {/* Penalties */}
         {team.penalties > 0 && (
-          <div className="bg-red-500/5 border border-red-500/10 p-3 sm:p-6 rounded-lg sm:rounded-[2rem] flex items-center justify-between group gap-3 sm:gap-4">
+          <div className="bg-red-500/5 border border-red-500/10 p-3 sm:p-6 rounded-lg sm:rounded-4xl flex items-center justify-between group gap-3 sm:gap-4">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-              <div className="bg-red-500/20 p-2 sm:p-4 rounded-lg sm:rounded-2xl text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)] flex-shrink-0">
+              <div className="bg-red-500/20 p-2 sm:p-4 rounded-lg sm:rounded-2xl text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)] shrink-0">
                 <ShieldAlert size={16} className="sm:size-6" />
               </div>
               <div className="min-w-0">
@@ -670,7 +728,7 @@ const PlayerDashboard = () => {
 
       {/* QR Scanner Overlay */}
       {showScanner && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-100 bg-black flex flex-col animate-in fade-in duration-300">
           <div className="p-3 sm:p-6 flex justify-between items-center text-white bg-[#0c1222] border-b border-white/5">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
