@@ -263,12 +263,6 @@ const PlayerDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    navigate('/login');
-  };
-
   const handleQuizSubmit = async () => {
     if (!quizInfo?.questions?.length) return;
     
@@ -298,6 +292,9 @@ const PlayerDashboard = () => {
       toast.error(err.response?.data?.message || 'Quiz submission failed', { id: quizSubmitToast });
     }
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
     localStorage.removeItem('role');
     navigate('/login');
     toast.success('Logged out successfully');
