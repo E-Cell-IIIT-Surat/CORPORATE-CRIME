@@ -1,50 +1,47 @@
 import mongoose from "mongoose";
 
-let isConnecting = false;
-let mongoosePromise = null;
+let cachedConnection = null;
 
 const connectDB = async () => {
   try {
-    if (mongoose.connection.readyState === 1) {
-      console.log("✓ MongoDB already connected");
-      return;
+    // Return cached connection if already connected
+    if (cachedConnection && mongoose.connection.readyState === 1) {
+      console.log("✓ Using cached MongoDB connection");
+      return cachedConnection;
     }
 
     if (!process.env.MONGO_URI) {
       throw new Error("MONGO_URI is not defined in environment variables");
     }
 
-    // Prevent multiple concurrent connection attempts
-    if (isConnecting) {
-      return mongoosePromise;
-    }
-
-    isConnecting = true;
-
-    mongoosePromise = mongoose.connect(process.env.MONGO_URI, {
+    console.log("🔗 Attempting to connect to MongoDB...");
+    
+    const opts = {
       serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 30000,
-      maxPoolSize: 5,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      maxPoolSize: 3,
       minPoolSize: 0,
       retryWrites: true,
-      retryReads: true,
-      connectTimeoutMS: 10000,
-      family: 4, // Force IPv4 to avoid DNS issues
+      family: 4,
       authSource: "admin",
-    });
+    };
 
-    await mongoosePromise;
-    isConnecting = false;
-
+    const conn = await mongoose.connect(process.env.MONGO_URI, opts);
+    
+    cachedConnection = conn;
     console.log("✓ MongoDB connected successfully");
+    
+    return conn;
   } catch (error) {
-    isConnecting = false;
-    console.error("✗ MongoDB Error:", error.message);
-
-    // Don't exit in production/serverless - let it retry
+    console.error("✗ MongoDB Connection Error:", error.message);
+    
+    // For serverless: don't exit, just log and let the request fail gracefully
     if (process.env.NODE_ENV === "development") {
       process.exit(1);
     }
+    
+    throw error;
   }
 };
 

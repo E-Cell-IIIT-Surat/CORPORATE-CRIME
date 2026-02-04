@@ -11,6 +11,7 @@ import quizRoutes from "./routes/quizRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import clueRoutes from "./routes/clueRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { ensureDBConnection } from "./middleware/dbMiddleware.js";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ const __dirname = path.dirname(__filename);
 
 app.use(cors());
 app.use(express.json());
+app.use(ensureDBConnection); // Ensure DB connection before processing requests
 
 // Only serve uploads folder locally (not in Vercel)
 if (!process.env.VERCEL) {
