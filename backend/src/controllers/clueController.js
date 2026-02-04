@@ -17,6 +17,7 @@ export const getClue = async (req, res) => {
     res.json({
       step: team.currentStep,
       clue: clue.text,
+      text: clue.text,  // Add this for consistency with nextClue structure
       imageUrl: clue.imageUrl || null
     });
   } catch (error) {
