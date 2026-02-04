@@ -1,28 +1,46 @@
 import mongoose from "mongoose";
 
+let isConnecting = false;
+let mongoosePromise = null;
+
 const connectDB = async () => {
   try {
     if (mongoose.connection.readyState === 1) {
       console.log("✓ MongoDB already connected");
       return;
     }
+
     if (!process.env.MONGO_URI) {
       throw new Error("MONGO_URI is not defined in environment variables");
     }
-    
-    // Serverless-optimized connection options
-    await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 10000, // 10 seconds timeout
-      socketTimeoutMS: 45000, // 45 seconds
-      maxPoolSize: 10, // Limit connection pool
-      minPoolSize: 1,
+
+    // Prevent multiple concurrent connection attempts
+    if (isConnecting) {
+      return mongoosePromise;
+    }
+
+    isConnecting = true;
+
+    mongoosePromise = mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 30000,
+      maxPoolSize: 5,
+      minPoolSize: 0,
       retryWrites: true,
       retryReads: true,
+      connectTimeoutMS: 10000,
+      family: 4, // Force IPv4 to avoid DNS issues
+      authSource: "admin",
     });
-    
+
+    await mongoosePromise;
+    isConnecting = false;
+
     console.log("✓ MongoDB connected successfully");
   } catch (error) {
+    isConnecting = false;
     console.error("✗ MongoDB Error:", error.message);
+
     // Don't exit in production/serverless - let it retry
     if (process.env.NODE_ENV === "development") {
       process.exit(1);

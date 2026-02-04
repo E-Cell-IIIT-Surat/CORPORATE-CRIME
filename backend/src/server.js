@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import mongoose from "mongoose";
 import connectDB from "./config/db.js";
 import teamRoutes from "./routes/teamRoutes.js";
 import scanRoutes from "./routes/scanRoutes.js";
@@ -45,8 +46,9 @@ app.get("/api/health", (req, res) => {
   res.json({ 
     status: "OK", 
     timestamp: new Date(),
-    mongoUri: process.env.MONGO_URI ? "Set" : "NOT SET",
-    jwtSecret: process.env.JWT_SECRET ? "Set" : "NOT SET",
+    mongoUri: process.env.MONGO_URI ? "✓ Set" : "✗ NOT SET",
+    mongoConnected: mongoose.connection.readyState === 1 ? "✓ Connected" : "✗ Disconnected",
+    jwtSecret: process.env.JWT_SECRET ? "✓ Set" : "✗ NOT SET",
     env: process.env.NODE_ENV || "development"
   });
 });
