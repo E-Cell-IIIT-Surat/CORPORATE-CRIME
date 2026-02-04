@@ -205,6 +205,8 @@ const PlayerDashboard = () => {
 
   const handleVerifyAnswer = async () => {
     if (!answer.trim()) return toast.error('Enter verification key or answer');
+    if (!currentChallenge || !locationId) return; // Guard against race conditions
+    
     const verifyToast = toast.loading('Verifying security clearance...');
     try {
       const timeTaken = challengeStartTime ? Math.round((Date.now() - challengeStartTime) / 1000) : 0;
@@ -214,6 +216,14 @@ const PlayerDashboard = () => {
         questionId: currentChallenge?.id,
         timeTaken
       });
+      
+      // Clear UI FIRST before showing any feedback
+      setUnlockedContent(null);
+      setLocationId(null);
+      setCurrentChallenge(null);
+      setChallengeStartTime(null);
+      setAnswer('');
+      
       toast.success(data.message, { id: verifyToast });
 
       // Show next clue immediately if present
@@ -227,21 +237,19 @@ const PlayerDashboard = () => {
         }
       }
 
-      // clear UI for current challenge
-      setUnlockedContent(null);
-      setLocationId(null);
-      setCurrentChallenge(null);
-      setChallengeStartTime(null);
-      setAnswer('');
-      fetchStatus();
-      fetchLeaderboard();
+      // Wait a bit before fetching status to ensure backend is updated
+      setTimeout(() => {
+        fetchStatus();
+        fetchLeaderboard();
+      }, 500);
       
       // If it was the last step, navigate to /quiz or finished screen
       if (data.isFinished) {
-        navigate('/quiz');
+        setTimeout(() => navigate('/quiz'), 1000);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Verification failed', { id: verifyToast });
+      // Only fetch status on error to show updated cooldown
       fetchStatus();
     }
   };
