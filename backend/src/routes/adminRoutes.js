@@ -2,6 +2,7 @@ import express from "express";
 import { adminLogin } from "../controllers/adminController.js";
 import { adminProtect } from "../middleware/adminMiddleware.js";
 import { upload } from "../utils/upload.js";
+import { parseFormData } from "../middleware/parseFormData.js";
 
 import {
   createLocation,
@@ -24,7 +25,8 @@ import {
 } from "../controllers/adminGameController.js";
 
 const router = express.Router();
-const useUpload = process.env.VERCEL ? (req, res, next) => next() : upload.single("image");
+// On Vercel: use custom form parser, On local: use multer for file uploads
+const useUpload = process.env.VERCEL ? parseFormData : upload.single("image");
 
 router.post("/login", adminLogin);
 

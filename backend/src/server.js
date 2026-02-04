@@ -25,6 +25,7 @@ const __dirname = path.dirname(__filename);
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Parse form data
 app.use(ensureDBConnection); // Ensure DB connection before processing requests
 
 // Only serve uploads folder locally (not in Vercel)
