@@ -34,8 +34,8 @@ const AdminDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showClueModal, setShowClueModal] = useState(false);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
-  const [newClue, setNewClue] = useState({ step: 1, category: 'A', text: '', image: null });
-  const [newQuestion, setNewQuestion] = useState({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10, image: null });
+  const [newClue, setNewClue] = useState({ step: 1, category: 'A', text: '', image: null, imageUrl: '' });
+  const [newQuestion, setNewQuestion] = useState({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10, image: null, imageUrl: '' });
   const [cluePreview, setCluePreview] = useState(null);
   const [questionPreview, setQuestionPreview] = useState(null);
   const navigate = useNavigate();
@@ -143,11 +143,18 @@ const AdminDashboard = () => {
       formData.append('step', String(newClue.step));
       formData.append('category', newClue.category);
       formData.append('text', newClue.text);
-      if (newClue.image) formData.append('image', newClue.image);
+      
+      // If image file is provided, append it; otherwise use imageUrl
+      if (newClue.image) {
+        formData.append('image', newClue.image);
+      } else if (newClue.imageUrl) {
+        formData.append('imageUrl', newClue.imageUrl);
+      }
+      
       await adminAPI.createClue(formData);
       toast.success('Clue encrypted and stored.');
       setShowClueModal(false);
-      setNewClue({ step: 1, category: 'A', text: '', image: null });
+      setNewClue({ step: 1, category: 'A', text: '', image: null, imageUrl: '' });
       setCluePreview(null);
       fetchData();
     } catch (err) {
@@ -165,11 +172,18 @@ const AdminDashboard = () => {
       formData.append('correctAnswer', newQuestion.correctAnswer);
       formData.append('points', String(newQuestion.points));
       if (newQuestion.options) formData.append('options', newQuestion.options);
-      if (newQuestion.image) formData.append('image', newQuestion.image);
+      
+      // If image file is provided, append it; otherwise use imageUrl
+      if (newQuestion.image) {
+        formData.append('image', newQuestion.image);
+      } else if (newQuestion.imageUrl) {
+        formData.append('imageUrl', newQuestion.imageUrl);
+      }
+      
       await adminAPI.createQuestion(formData);
       toast.success('Question deployed.');
       setShowQuestionModal(false);
-      setNewQuestion({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10, image: null });
+      setNewQuestion({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10, image: null, imageUrl: '' });
       setQuestionPreview(null);
       fetchData();
     } catch (err) {
@@ -686,25 +700,42 @@ const AdminDashboard = () => {
                 />
               </div>
               <div>
-                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image (optional)</label>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image Upload (Local Only)</label>
                 <input
                   type="file"
                   accept="image/*"
                   className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm text-gray-400"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
-                    setNewClue({ ...newClue, image: file });
+                    setNewClue({ ...newClue, image: file, imageUrl: '' });
                     setCluePreview(file ? URL.createObjectURL(file) : null);
                   }}
                 />
-                {cluePreview && (
-                  <img
-                    src={cluePreview}
-                    alt="Clue preview"
-                    className="mt-3 sm:mt-4 w-full h-32 sm:h-40 object-cover rounded-lg border border-white/10"
-                  />
-                )}
               </div>
+              <div className="text-center text-[10px] text-gray-600 font-bold">OR</div>
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image URL (For Deployment)</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm"
+                  value={newClue.imageUrl}
+                  onChange={(e) => {
+                    setNewClue({ ...newClue, imageUrl: e.target.value, image: null });
+                    setCluePreview(e.target.value || null);
+                  }}
+                />
+                <p className="text-[9px] text-gray-600 mt-1">Use Imgur, Cloudinary, or any public image URL</p>
+              </div>
+              
+              {cluePreview && (
+                <img
+                  src={cluePreview}
+                  alt="Clue preview"
+                  className="mt-3 sm:mt-4 w-full h-32 sm:h-40 object-cover rounded-lg border border-white/10"
+                />
+              )}
+              
               <div className="flex gap-2 sm:gap-4 pt-2 sm:pt-4">
                 <button 
                   type="button"
@@ -803,26 +834,42 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image (optional)</label>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image Upload (Local Only)</label>
                 <input
                   type="file"
                   accept="image/*"
                   className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm text-gray-400"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
-                    setNewQuestion({ ...newQuestion, image: file });
+                    setNewQuestion({ ...newQuestion, image: file, imageUrl: '' });
                     setQuestionPreview(file ? URL.createObjectURL(file) : null);
                   }}
                 />
-                {questionPreview && (
-                  <img
-                    src={questionPreview}
-                    alt="Question preview"
-                    className="mt-3 sm:mt-4 w-full h-32 sm:h-40 object-cover rounded-lg border border-white/10"
-                  />
-                )}
               </div>
-
+              <div className="text-center text-[10px] text-gray-600 font-bold">OR</div>
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image URL (For Deployment)</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm"
+                  value={newQuestion.imageUrl}
+                  onChange={(e) => {
+                    setNewQuestion({ ...newQuestion, imageUrl: e.target.value, image: null });
+                    setQuestionPreview(e.target.value || null);
+                  }}
+                />
+                <p className="text-[9px] text-gray-600 mt-1">Use Imgur, Cloudinary, or any public image URL</p>
+              </div>
+              
+              {questionPreview && (
+                <img
+                  src={questionPreview}
+                  alt="Question preview"
+                  className="mt-3 sm:mt-4 w-full h-32 sm:h-40 object-cover rounded-lg border border-white/10"
+                />
+              )}
+              
               <div className="flex gap-2 sm:gap-4 pt-2 sm:pt-4">
                 <button
                   type="button"
