@@ -98,7 +98,8 @@ export const scanQR = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Scan error:", error);
+    res.status(500).json({ message: error?.message || "Internal server error" });
   }
 };
 
@@ -198,6 +199,7 @@ export const verifyAnswer = async (req, res) => {
       });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Verify answer error:", error);
+    res.status(500).json({ message: error?.message || "Internal server error" });
   }
 };

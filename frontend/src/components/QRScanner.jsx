@@ -23,16 +23,29 @@ const QRScanner = ({ onScanSuccess }) => {
   const startCamera = async () => {
     setIsInitializing(true);
     try {
-      // First, check for permissions explicitly if possible
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        await navigator.mediaDevices.getUserMedia({ video: true });
+      // Get list of available cameras
+      const devices = await Html5Qrcode.getCameras();
+      
+      if (!devices || devices.length === 0) {
+        throw new Error("No cameras found");
       }
 
+      // Find rear camera (environment facing)
+      const rearCamera = devices.find(device => 
+        device.label.toLowerCase().includes('back') || 
+        device.label.toLowerCase().includes('rear') ||
+        device.label.toLowerCase().includes('environment')
+      );
+
+      // Use rear camera ID if found, otherwise try facingMode constraint
+      const cameraId = rearCamera ? rearCamera.id : devices[devices.length - 1].id;
+
       await scannerRef.current.start(
-        { facingMode: "environment" },
+        cameraId,
         {
-          fps: 15, // Higher FPS for better response
+          fps: 15,
           qrbox: { width: 280, height: 280 },
+          aspectRatio: 1.0,
         },
         (decodedText) => {
           stopCamera();
@@ -43,10 +56,10 @@ const QRScanner = ({ onScanSuccess }) => {
       setIsCameraActive(true);
     } catch (err) {
       console.error("Camera start error:", err);
-      // Fallback to any camera
+      // Final fallback: try with facingMode constraint
       try {
         await scannerRef.current.start(
-          { facingMode: "user" },
+          { facingMode: { ideal: "environment" } },
           { fps: 15, qrbox: { width: 280, height: 280 } },
           (decodedText) => {
             stopCamera();
@@ -56,6 +69,7 @@ const QRScanner = ({ onScanSuccess }) => {
         );
         setIsCameraActive(true);
       } catch (retryErr) {
+        console.error("Final camera fallback error:", retryErr);
         toast.error("Optics Malfunction: Camera access denied. Use Intel Upload.");
         setIsCameraActive(false);
       }
