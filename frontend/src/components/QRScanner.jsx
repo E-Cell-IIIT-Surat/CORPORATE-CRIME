@@ -44,8 +44,12 @@ const QRScanner = ({ onScanSuccess }) => {
         cameraId,
         {
           fps: 15,
-          qrbox: { width: 280, height: 280 },
-          aspectRatio: 1.0,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const qrboxSize = Math.floor(minEdge * 0.7);
+            return { width: qrboxSize, height: qrboxSize };
+          },
+          aspectRatio: 1.777778, // 16:9
         },
         (decodedText) => {
           stopCamera();
@@ -60,7 +64,15 @@ const QRScanner = ({ onScanSuccess }) => {
       try {
         await scannerRef.current.start(
           { facingMode: { ideal: "environment" } },
-          { fps: 15, qrbox: { width: 280, height: 280 } },
+          { 
+            fps: 15, 
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+              const qrboxSize = Math.floor(minEdge * 0.7);
+              return { width: qrboxSize, height: qrboxSize };
+            },
+            aspectRatio: 1.777778
+          },
           (decodedText) => {
             stopCamera();
             onScanSuccess(decodedText);
