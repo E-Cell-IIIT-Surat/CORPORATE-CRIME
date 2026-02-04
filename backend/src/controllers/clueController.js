@@ -20,6 +20,7 @@ export const getClue = async (req, res) => {
       imageUrl: clue.imageUrl || null
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Get clue error:", error);
+    res.status(500).json({ message: error?.message || "Internal server error" });
   }
 };

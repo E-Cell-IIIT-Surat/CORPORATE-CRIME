@@ -19,6 +19,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Handle 401 responses globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.error('401 Unauthorized:', error.response?.data?.message);
+      // Only redirect to login if it's not already on login/register pages
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const teamAPI = {
   login: (data) => api.post('/team/login', data),
   register: (data) => api.post('/team/register', data),
