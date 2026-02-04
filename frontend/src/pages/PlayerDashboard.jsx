@@ -45,20 +45,12 @@ const PlayerDashboard = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [isQualified, setIsQualified] = useState(false);
-  const [quizInfo, setQuizInfo] = useState(null);
-  const [quizAnswers, setQuizAnswers] = useState({});
-  const [quizStartTime, setQuizStartTime] = useState(null);
   const navigate = useNavigate();
 
   const fetchStatus = async () => {
     try {
       const { data: teamData } = await teamAPI.getMe();
       setTeam(teamData);
-      
-      if (teamData.currentStep > teamData.totalSteps && teamData.totalSteps > 0) {
-        navigate('/quiz');
-        return;
-      }
 
       if (teamData.lastWrongScanTime) {
         const SCAN_COOLDOWN = 60000;
@@ -245,51 +237,10 @@ const PlayerDashboard = () => {
         fetchStatus();
         fetchLeaderboard();
       }, 500);
-      
-      // Check if finished - show quiz inline
-      if (data.isFinished) {
-        try {
-          const { data: quizData } = await teamAPI.getQuiz();
-          setQuizInfo(quizData);
-          setQuizStartTime(Date.now());
-        } catch (quizErr) {
-          console.error("Failed to load quiz:", quizErr);
-        }
-      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Verification failed', { id: verifyToast });
       // Only fetch status on error to show updated cooldown
       fetchStatus();
-    }
-  };
-
-  const handleQuizSubmit = async () => {
-    if (!quizInfo?.questions?.length) return;
-    
-    const unanswered = quizInfo.questions.filter((q) => !quizAnswers[q._id]);
-    if (unanswered.length > 0) {
-      toast.error('Please answer all questions before submitting');
-      return;
-    }
-
-    const quizSubmitToast = toast.loading('Submitting quiz...');
-    try {
-      const timeTaken = quizStartTime ? Math.round((Date.now() - quizStartTime) / 1000) : 0;
-      const payload = {
-        answers: quizInfo.questions.map((q) => ({
-          questionId: q._id,
-          answer: quizAnswers[q._id]
-        })),
-        timeTaken
-      };
-      const { data } = await teamAPI.submitQuiz(payload);
-      toast.success(data.message, { id: quizSubmitToast });
-      setQuizInfo(null);
-      setQuizAnswers({});
-      fetchStatus();
-      fetchLeaderboard();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Quiz submission failed', { id: quizSubmitToast });
     }
   };
 
@@ -653,82 +604,6 @@ const PlayerDashboard = () => {
             </div>
           )}
         </div>
-
-        {/* Quiz Section - Inline */}
-        {quizInfo && (
-          <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 mt-8 sm:mt-12">
-            <div className="bg-[#0c1222] border-2 border-green-500/20 p-4 sm:p-8 md:p-12 rounded-xl sm:rounded-[2.5rem] relative overflow-hidden shadow-[0_0_80px_rgba(34,197,94,0.15)]">
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-green-600/10 blur-[150px] rounded-full" />
-              </div>
-
-              <div className="relative z-20">
-                <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-10">
-                  <CheckCircle size={20} className="text-green-500 sm:size-7" />
-                  <span className="text-[9px] sm:text-[11px] font-black text-green-500 uppercase tracking-[0.4em]">Final Assessment</span>
-                </div>
-
-                <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-8 sm:mb-12 uppercase italic">
-                  Step {quizInfo.step} <span className="text-green-500">Quiz</span>
-                </h2>
-
-                <div className="space-y-6 sm:space-y-8">
-                  {quizInfo.questions?.map((question, idx) => (
-                    <div key={question._id} className="space-y-3 sm:space-y-4">
-                      <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-600/20 border border-green-500/30 flex items-center justify-center">
-                          <span className="text-xs sm:text-sm font-black text-green-500">{idx + 1}</span>
-                        </div>
-                        <p className="text-sm sm:text-lg md:text-xl font-black text-white flex-1 pt-1">
-                          {question.question}
-                        </p>
-                      </div>
-
-                      {question.options && question.options.length > 0 ? (
-                        <div className="ml-11 sm:ml-14 space-y-2">
-                          {question.options.map((option, optIdx) => (
-                            <label key={optIdx} className="flex items-center gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl bg-black/40 hover:bg-black/60 border border-white/10 cursor-pointer transition-all group">
-                              <input
-                                type="radio"
-                                name={`question-${question._id}`}
-                                value={option}
-                                checked={quizAnswers[question._id] === option}
-                                onChange={(e) => setQuizAnswers({...quizAnswers, [question._id]: e.target.value})}
-                                className="w-4 h-4 accent-green-500 cursor-pointer"
-                              />
-                              <span className="text-sm sm:text-base text-gray-300 group-hover:text-white transition-all">{option}</span>
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="ml-11 sm:ml-14">
-                          <input
-                            type="text"
-                            placeholder="Enter your answer"
-                            value={quizAnswers[question._id] || ''}
-                            onChange={(e) => setQuizAnswers({...quizAnswers, [question._id]: e.target.value})}
-                            className="w-full bg-black/40 border border-white/10 rounded-lg sm:rounded-xl px-4 py-3 sm:py-4 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/60 transition-all"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleQuizSubmit}
-                  className="w-full group relative h-12 sm:h-16 mt-8 sm:mt-12 overflow-hidden rounded-lg sm:rounded-2xl bg-green-600 transition-all active:scale-[0.98] shadow-[0_20px_50px_rgba(34,197,94,0.4)]"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  <div className="flex items-center justify-center gap-2 sm:gap-4 text-sm sm:text-lg font-black uppercase tracking-[0.3em] text-white">
-                    <CheckCircle size={16} className="group-hover:scale-110 transition-transform sm:size-5" />
-                    <span>Submit Quiz</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Leaderboard Section */}
         {showLeaderboard && (
