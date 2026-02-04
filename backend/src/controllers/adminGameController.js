@@ -199,9 +199,12 @@ export const createLocation = async (req, res) => {
 
 export const createQuestion = async (req, res) => {
   try {
-    const { step, category, question, correctAnswer, points } = req.body;
+    const { step, category, question, correctAnswer, points, imageUrl } = req.body;
     const options = parseOptions(req.body.options);
-    const imageUrl = getFileUrl(req, req.file);
+    
+    // Use uploaded file URL if available, otherwise use provided URL from body
+    const finalImageUrl = req.file ? getFileUrl(req, req.file) : (imageUrl || null);
+    
     const created = await Question.create({
       step: Number(step),
       category: category || "ALL",
@@ -209,26 +212,31 @@ export const createQuestion = async (req, res) => {
       options,
       correctAnswer,
       points: points ? Number(points) : 10,
-      imageUrl
+      imageUrl: finalImageUrl
     });
     res.status(201).json(created);
   } catch (error) {
+    console.error("Create Question Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
 export const createClue = async (req, res) => {
   try {
-    const { step, category, text } = req.body;
-    const imageUrl = getFileUrl(req, req.file);
+    const { step, category, text, imageUrl } = req.body;
+    
+    // Use uploaded file URL if available, otherwise use provided URL from body
+    const finalImageUrl = req.file ? getFileUrl(req, req.file) : (imageUrl || null);
+    
     const clue = await Clue.create({
       step: Number(step),
       category: category || "ALL",
       text,
-      imageUrl
+      imageUrl: finalImageUrl
     });
     res.status(201).json(clue);
   } catch (error) {
+    console.error("Create Clue Error:", error);
     if (error.code === 11000) {
       return res.status(400).json({ message: 'Clue for this step and category already exists' });
     }
@@ -250,11 +258,20 @@ export const updateClue = async (req, res) => {
     const { id } = req.params;
     const update = { ...req.body };
     if (update.step) update.step = Number(update.step);
-    if (req.file) update.imageUrl = getFileUrl(req, req.file);
+    
+    // Use uploaded file if available, otherwise keep existing or use provided URL
+    if (req.file) {
+      update.imageUrl = getFileUrl(req, req.file);
+    } else if (!update.imageUrl) {
+      // Don't update imageUrl if not provided
+      delete update.imageUrl;
+    }
+    
     const updatedClue = await Clue.findByIdAndUpdate(id, update, { new: true });
     if (!updatedClue) return res.status(404).json({ message: "Clue not found" });
     res.json(updatedClue);
   } catch (error) {
+    console.error("Update Clue Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
