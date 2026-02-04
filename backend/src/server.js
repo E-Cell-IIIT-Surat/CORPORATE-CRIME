@@ -9,6 +9,7 @@ import scanRoutes from "./routes/scanRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import clueRoutes from "./routes/clueRoutes.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 dotenv.config();
 
@@ -55,10 +56,13 @@ app.use("/api/quiz", quizRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/clue", clueRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  res.status(500).json({ message: "Internal Server Error" });
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
 });
+
+// Global error handling middleware (must be last)
+app.use(errorHandler);
 
 export default app;
 
@@ -69,3 +73,17 @@ if (!process.env.VERCEL) {
     console.log(`\n🚀 Server running on http://localhost:${PORT}`);
   });
 }
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('💥 UNCAUGHT EXCEPTION! Shutting down gracefully...');
+  console.error('Error:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION! Shutting down gracefully...');
+  console.error('Reason:', reason);
+  process.exit(1);
+});
