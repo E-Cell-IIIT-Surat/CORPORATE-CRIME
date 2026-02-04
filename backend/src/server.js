@@ -28,11 +28,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Parse form data
 app.use(ensureDBConnection); // Ensure DB connection before processing requests
 
-// Only serve uploads folder locally (not in Vercel)
-if (!process.env.VERCEL) {
-  app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
-}
-
 // Handle JSON parsing errors
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && "body" in err) {

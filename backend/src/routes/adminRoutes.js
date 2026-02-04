@@ -26,6 +26,7 @@ import {
 
 const router = express.Router();
 // On Vercel: use custom form parser, On local: use multer for file uploads
+// Both convert images to base64 for database storage
 const useUpload = process.env.VERCEL ? parseFormData : upload.single("image");
 
 router.post("/login", adminLogin);

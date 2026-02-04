@@ -8,7 +8,7 @@ const clueSchema = new mongoose.Schema({
     required: true
   },
   text: { type: String, required: true }, // riddle / hint
-  imageUrl: { type: String }
+  imageUrl: { type: String } // Now stores base64 data URLs instead of file paths
 });
 
 // Ensure only one clue per (step, category)

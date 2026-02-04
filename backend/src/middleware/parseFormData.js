@@ -1,5 +1,5 @@
 // Middleware to parse multipart/form-data on Vercel (where multer is bypassed)
-// This extracts only the text fields from multipart forms
+// Extracts text fields AND converts image files to base64
 
 export const parseFormData = (req, res, next) => {
   // Only parse if it's multipart/form-data and on Vercel
@@ -8,8 +8,10 @@ export const parseFormData = (req, res, next) => {
   }
 
   let body = '';
+  const chunks = [];
   
   req.on('data', chunk => {
+    chunks.push(chunk);
     body += chunk.toString();
   });
 
@@ -32,12 +34,33 @@ export const parseFormData = (req, res, next) => {
 
         const fieldName = nameMatch[1];
         
-        // Extract value (after headers, before next boundary)
-        const valueMatch = part.split('\r\n\r\n')[1];
-        if (valueMatch) {
-          const value = valueMatch.split('\r\n')[0];
-          if (value && !value.includes('Content-Type:')) {
-            formData[fieldName] = value;
+        // Check if this is a file field
+        const filenameMatch = part.match(/filename="([^"]+)"/);
+        if (filenameMatch) {
+          // Handle file upload - convert to base64
+          const mimeTypeMatch = part.match(/Content-Type: (.+?)\r?\n/);
+          const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'application/octet-stream';
+          
+          // Extract file content (after headers, before next boundary)
+          const headerEndIndex = part.indexOf('\r\n\r\n');
+          if (headerEndIndex !== -1) {
+            const contentStart = headerEndIndex + 4; // Skip \r\n\r\n
+            const contentEnd = part.lastIndexOf('\r\n');
+            const fileContent = part.substring(contentStart, contentEnd);
+            
+            if (fileContent && mimeType.startsWith('image/')) {
+              const base64 = Buffer.from(fileContent, 'binary').toString('base64');
+              formData[fieldName] = `data:${mimeType};base64,${base64}`;
+            }
+          }
+        } else {
+          // Handle text field
+          const valueMatch = part.split('\r\n\r\n')[1];
+          if (valueMatch) {
+            const value = valueMatch.split('\r\n')[0];
+            if (value && !value.includes('Content-Type:')) {
+              formData[fieldName] = value;
+            }
           }
         }
       }

@@ -5,11 +5,7 @@ import ScanLog from "../models/ScanLog.js";
 import QuizAttempt from "../models/QuizAttempt.js";
 import Clue from "../models/Clue.js";
 import GameSettings from "../models/GameSettings.js";
-
-const getFileUrl = (req, file) => {
-  if (!file) return null;
-  return `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
-};
+import { fileToBase64 } from "../utils/upload.js";
 
 const parseOptions = (options) => {
   if (!options) return [];
@@ -199,11 +195,19 @@ export const createLocation = async (req, res) => {
 
 export const createQuestion = async (req, res) => {
   try {
-    const { step, category, question, correctAnswer, points, imageUrl } = req.body;
+    const { step, category, question, correctAnswer, points, imageUrl, imageBase64 } = req.body;
     const options = parseOptions(req.body.options);
     
-    // Use uploaded file URL if available, otherwise use provided URL from body
-    const finalImageUrl = req.file ? getFileUrl(req, req.file) : (imageUrl || null);
+    // Priority: uploaded file > base64 > URL from body
+    let finalImageUrl = null;
+    if (req.file) {
+      finalImageUrl = fileToBase64(req.file);
+    } else if (imageBase64) {
+      // Store base64 directly
+      finalImageUrl = imageBase64;
+    } else if (imageUrl) {
+      finalImageUrl = imageUrl;
+    }
     
     const created = await Question.create({
       step: Number(step),
@@ -223,10 +227,18 @@ export const createQuestion = async (req, res) => {
 
 export const createClue = async (req, res) => {
   try {
-    const { step, category, text, imageUrl } = req.body;
+    const { step, category, text, imageUrl, imageBase64 } = req.body;
     
-    // Use uploaded file URL if available, otherwise use provided URL from body
-    const finalImageUrl = req.file ? getFileUrl(req, req.file) : (imageUrl || null);
+    // Priority: uploaded file > base64 > URL from body
+    let finalImageUrl = null;
+    if (req.file) {
+      finalImageUrl = fileToBase64(req.file);
+    } else if (imageBase64) {
+      // Store base64 directly
+      finalImageUrl = imageBase64;
+    } else if (imageUrl) {
+      finalImageUrl = imageUrl;
+    }
     
     const clue = await Clue.create({
       step: Number(step),
@@ -261,7 +273,7 @@ export const updateClue = async (req, res) => {
     
     // Use uploaded file if available, otherwise keep existing or use provided URL
     if (req.file) {
-      update.imageUrl = getFileUrl(req, req.file);
+      update.imageUrl = fileToBase64(req.file);
     } else if (!update.imageUrl) {
       // Don't update imageUrl if not provided
       delete update.imageUrl;
