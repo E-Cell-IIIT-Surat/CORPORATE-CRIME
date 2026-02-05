@@ -27,11 +27,14 @@ import {
 } from 'lucide-react';
 import QRScanner from '../components/QRScanner';
 import toast from 'react-hot-toast';
+import QuestionContent from '../components/QuestionContent';
 
 const PlayerDashboard = () => {
   const [team, setTeam] = useState(null);
   const [clue, setClue] = useState('');
   const [clueImage, setClueImage] = useState(null);
+  const [isClueLoading, setIsClueLoading] = useState(false);
+  const [hints, setHints] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
   const [unlockedContent, setUnlockedContent] = useState(null);
   const [locationId, setLocationId] = useState(null);
@@ -61,17 +64,29 @@ const PlayerDashboard = () => {
       }
 
       try {
-        const { data: clueData } = await teamAPI.getClue();
-        setClue(clueData.clue);
-        setClueImage(clueData.imageUrl || null);
-      } catch (clueErr) {
-        setClue("Mission details pending... Check back soon!");
-        setClueImage(null);
+        const { data: hintData } = await teamAPI.getHints();
+        setHints(Array.isArray(hintData) ? hintData : []);
+      } catch (hintErr) {
+        setHints([]);
       }
     } catch (err) {
       if (err.response?.status === 401) {
         navigate('/login');
       }
+    }
+  };
+
+  const fetchClue = async () => {
+    try {
+      setIsClueLoading(true);
+      const { data: clueData } = await teamAPI.getClue();
+      setClue(clueData.clue);
+      setClueImage(clueData.imageUrl || null);
+    } catch (clueErr) {
+      setClue("Mission details pending... Check back soon!");
+      setClueImage(null);
+    } finally {
+      setIsClueLoading(false);
     }
   };
 
@@ -112,6 +127,7 @@ const PlayerDashboard = () => {
 
   useEffect(() => {
     fetchStatus();
+    fetchClue();
     fetchLeaderboard();
     const interval = setInterval(() => {
       fetchGameStatus();
@@ -230,20 +246,14 @@ const PlayerDashboard = () => {
       
       toast.success(data.message, { id: verifyToast });
 
-      // Show next clue immediately if present
-      if (data.nextClue) {
-        if (typeof data.nextClue === 'string') {
-          setClue(data.nextClue);
-          setClueImage(null);
-        } else {
-          setClue(data.nextClue.text);
-          setClueImage(data.nextClue.imageUrl || null);
-        }
-      }
+      setIsClueLoading(true);
+      setClue('');
+      setClueImage(null);
 
       // Wait a bit before fetching status to ensure backend is updated
       setTimeout(() => {
         fetchStatus();
+        fetchClue();
         fetchLeaderboard();
       }, 500);
     } catch (err) {
@@ -295,9 +305,7 @@ const PlayerDashboard = () => {
       <nav className="bg-[#0c1222]/80 backdrop-blur-xl border-b border-blue-500/20 p-3 sm:p-4 sticky top-0 z-40 shadow-2xl">
         <div className="max-w-7xl mx-auto flex justify-between items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <div className="bg-linear-to-br from-blue-500 to-blue-600 p-2 sm:p-3 rounded-lg shadow-[0_0_25px_rgba(37,99,235,0.5)] shrink-0">
-              <ShieldIcon size={20} className="text-white sm:size-6" strokeWidth={2.5} />
-            </div>
+            <img src="/CORPORATE CRIME.png" alt="Corporate Crime" className="h-12 sm:h-14 object-contain shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="font-black text-base sm:text-xl tracking-tight uppercase text-blue-500 truncate">
                 {team.name}
@@ -469,7 +477,12 @@ const PlayerDashboard = () => {
               
               {/* Intel Image/Content */}
               <div className="relative bg-black/60 border border-blue-500/20 rounded-lg overflow-hidden mb-6 group">
-                {clueImage ? (
+                {isClueLoading ? (
+                  <div className="p-8 text-center">
+                    <Loader2 size={42} className="text-blue-500/60 mx-auto mb-4 animate-spin" />
+                    <p className="text-sm font-bold text-blue-400 uppercase tracking-[0.3em]">Decrypting Intel</p>
+                  </div>
+                ) : clueImage ? (
                   <div className="relative">
                     <img
                       src={clueImage}
@@ -486,6 +499,25 @@ const PlayerDashboard = () => {
                     <Lock size={48} className="text-blue-500/30 mx-auto mb-4" />
                     <p className="text-xl font-bold text-white mb-2">Decryption Key Required</p>
                     <p className="text-sm text-gray-400">{clue}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Hints Section */}
+              <div className="mb-6">
+                <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">Mission Hints</div>
+                {hints.length > 0 ? (
+                  <div className="space-y-3">
+                    {hints.map((hint) => (
+                      <div key={hint._id} className="bg-black/70 border border-blue-500/20 rounded-lg p-4">
+                        <div className="text-xs font-black text-blue-300 mb-1">{hint.title}</div>
+                        <p className="text-sm text-gray-300 leading-relaxed">{hint.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-black/40 border border-blue-500/10 rounded-lg p-4 text-sm text-gray-500">
+                    No hints released yet for this phase.
                   </div>
                 )}
               </div>
@@ -535,8 +567,8 @@ const PlayerDashboard = () => {
                 
                 {/* Title */}
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-center uppercase tracking-tight">
-                  <span className="text-white">Classified </span>
-                  <span className="text-red-500">Transmission</span>
+                  <span className="text-white">Crime </span>
+                  <span className="text-red-500">Report</span>
                 </h2>
                 
                 {/* PDF Content - Cleaner Display */}
@@ -557,19 +589,13 @@ const PlayerDashboard = () => {
                       <span className="text-xs font-black text-gray-500 uppercase tracking-[0.3em]">Challenge</span>
                     </div>
                     
-                    {/* Challenge Image */}
-                    {currentChallenge.imageUrl && (
-                      <img
-                        src={currentChallenge.imageUrl}
-                        alt="Challenge"
-                        className="w-full h-auto max-h-64 object-contain rounded-lg border border-white/10 bg-black"
-                      />
-                    )}
-                    
-                    {/* Question */}
-                    <p className="text-center text-base sm:text-lg md:text-xl font-bold text-blue-400 leading-relaxed px-2">
-                      {currentChallenge.text}
-                    </p>
+                    <QuestionContent
+                      text={currentChallenge.text}
+                      imageUrl={currentChallenge.imageUrl}
+                      containerClassName="space-y-4"
+                      textClassName="text-center text-base sm:text-lg md:text-xl font-bold text-blue-400 leading-relaxed px-2"
+                      imageClassName="w-full h-auto max-h-64 object-contain rounded-lg border border-white/10 bg-black"
+                    />
                     
                     {/* Options */}
                     {currentChallenge.options && currentChallenge.options.length > 0 ? (
@@ -596,8 +622,8 @@ const PlayerDashboard = () => {
                     ) : (
                       <div className="space-y-3">
                         <div className="flex justify-between items-center px-2">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Access Key</label>
-                          <span className="text-[9px] font-bold text-red-500/70 uppercase tracking-wide">Manual Entry</span>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Enter the Answer</label>
+                          <span className="text-[9px] font-bold text-red-500/70 uppercase tracking-wide">Submit</span>
                         </div>
                         <input
                           type="text"
@@ -621,8 +647,8 @@ const PlayerDashboard = () => {
                     
                     <div className="space-y-3">
                       <div className="flex justify-between items-center px-2">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Bypass Key</label>
-                        <span className="text-[9px] font-bold text-red-500/70 uppercase tracking-wide">Emergency</span>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Enter the Answer</label>
+                        <span className="text-[9px] font-bold text-red-500/70 uppercase tracking-wide">Submit</span>
                       </div>
                       <input
                         type="text"
@@ -647,16 +673,10 @@ const PlayerDashboard = () => {
                     <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500" />
                     <div className="flex items-center justify-center gap-3 text-sm sm:text-base font-black uppercase tracking-[0.2em] text-white">
                       <ShieldIcon size={18} className="group-hover:scale-110 transition-transform sm:size-5" />
-                      <span>OK</span>
+                      <span>Submit</span>
                     </div>
                   </button>
 
-                  <button 
-                    onClick={() => { setUnlockedContent(null); setLocationId(null); setCurrentChallenge(null); setAnswer(''); }}
-                    className="flex items-center justify-center gap-2 w-full text-[10px] font-black text-gray-600 hover:text-red-500 uppercase tracking-[0.3em] transition-colors py-2 group"
-                  >
-                    <X size={14} className="group-hover:rotate-90 transition-transform" /> Abort Operation
-                  </button>
                 </div>
               </div>
             </div>

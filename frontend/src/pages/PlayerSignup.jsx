@@ -86,9 +86,7 @@ const PlayerSignup = () => {
         
         <div className="relative">
           <div className="flex justify-center mb-8 sm:mb-10 md:mb-12">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-linear-to-br from-blue-500 to-blue-600 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-[0_0_30px_rgba(37,99,235,0.4)] transform -rotate-6 group-hover:rotate-0 transition-all duration-500">
-              <Target className="text-white size-8 sm:size-10 md:size-12" />
-            </div>
+            <img src="/CORPORATE CRIME.png" alt="Corporate Crime" className="h-24 sm:h-28 md:h-32 object-contain" />
           </div>
 
           <div className="text-center mb-8 sm:mb-10 md:mb-12">

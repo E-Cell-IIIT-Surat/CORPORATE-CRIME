@@ -5,8 +5,7 @@ const teamSchema = new mongoose.Schema(
     name: { type: String, required: true, unique: true },
     category: {
       type: String,
-      enum: ["A", "B", "C", "D", "E"],
-      immutable: true
+      enum: ["A", "B", "C", "D", "E"]
     },
     password: { type: String, required: true },
     

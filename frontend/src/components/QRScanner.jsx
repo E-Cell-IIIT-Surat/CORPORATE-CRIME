@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 const QRScanner = ({ onScanSuccess }) => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isClosing, setIsClosing] = useState(false);
   const scannerRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -14,6 +15,7 @@ const QRScanner = ({ onScanSuccess }) => {
     startCamera();
 
     return () => {
+      setIsClosing(true);
       if (scannerRef.current?.isScanning) {
         scannerRef.current.stop().catch(console.error);
       }
@@ -52,7 +54,7 @@ const QRScanner = ({ onScanSuccess }) => {
           aspectRatio: 1.777778, // 16:9
         },
         (decodedText) => {
-          stopCamera();
+          stopCamera(true);
           onScanSuccess(decodedText);
         },
         () => {}
@@ -74,7 +76,7 @@ const QRScanner = ({ onScanSuccess }) => {
             aspectRatio: 1.777778
           },
           (decodedText) => {
-            stopCamera();
+            stopCamera(true);
             onScanSuccess(decodedText);
           },
           () => {}
@@ -90,9 +92,10 @@ const QRScanner = ({ onScanSuccess }) => {
     }
   };
 
-  const stopCamera = async () => {
+  const stopCamera = async (suppressOverlay = false) => {
     if (scannerRef.current?.isScanning) {
       try {
+        if (suppressOverlay) setIsClosing(true);
         await scannerRef.current.stop();
         setIsCameraActive(false);
       } catch (err) {
@@ -135,7 +138,7 @@ const QRScanner = ({ onScanSuccess }) => {
       )}
 
       {/* Overlay UI */}
-      {!isCameraActive && !isInitializing && (
+      {!isCameraActive && !isInitializing && !isClosing && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#020617]/98 z-20 p-4 sm:p-10 text-center backdrop-blur-2xl overflow-y-auto">
           <div className="bg-red-500/10 p-4 sm:p-8 rounded-lg sm:rounded-[2rem] border border-red-500/20 mb-6 sm:mb-10 shadow-[0_0_40px_rgba(239,68,68,0.15)] animate-in zoom-in duration-500 flex-shrink-0">
             <XCircle size={40} className="text-red-500 animate-pulse sm:size-16" />

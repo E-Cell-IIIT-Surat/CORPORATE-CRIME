@@ -3,7 +3,18 @@ import Location from "../models/Location.js";
 import Question from "../models/Question.js";
 import ScanLog from "../models/ScanLog.js";
 import Clue from "../models/Clue.js";
+import GameSettings from "../models/GameSettings.js";
 import { SCAN_COOLDOWN } from "../utils/constants.js";
+import { calculateCodeforcesScore } from "./quizController.js";
+
+const CATEGORIES = ["A", "B", "C", "D", "E"];
+
+const pickNewCategory = (currentCategory) => {
+  if (!currentCategory) return CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
+  const choices = CATEGORIES.filter((cat) => cat !== currentCategory);
+  if (choices.length === 0) return currentCategory;
+  return choices[Math.floor(Math.random() * choices.length)];
+};
 
 export const scanQR = async (req, res) => {
   try {
@@ -136,47 +147,42 @@ export const verifyAnswer = async (req, res) => {
     const correct = normalizeAnswer(question.correctAnswer);
 
     if (submitted === correct) {
-      // ✅ SUCCESS FLOW
-      // Coding contest style: score based on remaining event time
+      // ✅ SUCCESS FLOW - Codeforces-style time-based scoring
+      // score = max(0.3 * points, points - points/250 * time_in_minutes)
       const basePoints = question.points || 10;
-      const timeTaken = Number(req.body.timeTaken) || 0; // seconds to answer this question
 
-      // Calculate time bonus based on how much event time is remaining
-      const GameSettings = (await import('../models/GameSettings.js')).default;
+      // Calculate time from event start and apply Codeforces-style scoring
       const gameSettings = await GameSettings.findOne();
-      let timeMultiplier = 1.0;
+      let pointsAwarded = 0;
       
-      if (gameSettings && gameSettings.isStarted && gameSettings.startTime && gameSettings.endTime) {
-        const now = Date.now();
-        const totalDuration = new Date(gameSettings.endTime).getTime() - new Date(gameSettings.startTime).getTime();
-        const elapsed = now - new Date(gameSettings.startTime).getTime();
-        const remainingRatio = Math.max(0, Math.min(1, 1 - (elapsed / totalDuration)));
-        // More time remaining = higher multiplier (1.0 to 2.0)
-        timeMultiplier = 1.0 + remainingRatio;
+      if (gameSettings && gameSettings.isStarted && gameSettings.startTime) {
+        const eventStartTime = new Date(gameSettings.startTime).getTime();
+        const currentTime = Date.now();
+        const elapsedTimeInSeconds = Math.floor((currentTime - eventStartTime) / 1000);
+        const elapsedTimeInMinutes = elapsedTimeInSeconds / 60;
+        
+        // Codeforces-style scoring: faster solvers get more points
+        pointsAwarded = calculateCodeforcesScore(basePoints, elapsedTimeInMinutes);
+      } else {
+        // If game not started, use base points
+        pointsAwarded = basePoints;
       }
-
-      // Fast answer bonus: under 30 seconds gets extra points
-      const speedBonus = timeTaken < 30 ? Math.round((30 - timeTaken) * 0.5) : 0;
-      
-      const rawPoints = Math.round(basePoints * timeMultiplier) + speedBonus;
-      const pointsAwarded = Math.max(basePoints, Math.min(rawPoints, basePoints * 3));
 
       team.score += pointsAwarded;
       team.currentStep += 1; // ADVANCE STEP
+      team.category = pickNewCategory(team.category);
       await team.save();
 
       await ScanLog.create({
         teamId: team._id,
         locationId: location._id,
         isCorrect: true,
-        timeTaken,
         pointsAwarded
       });
 
       // Check if finished
-      const totalLocations = await Location.countDocuments({ 
-        category: { $in: [team.category, "ALL"] } 
-      });
+      const maxOrderDoc = await Location.findOne().sort({ order: -1 }).select("order");
+      const totalLocations = maxOrderDoc ? maxOrderDoc.order : 0;
       const isFinished = team.currentStep > totalLocations;
 
       // Fetch next clue (if any) for immediate display
@@ -188,6 +194,7 @@ export const verifyAnswer = async (req, res) => {
         score: team.score,
         nextStep: team.currentStep,
         isFinished,
+        category: team.category,
         pointsAwarded,
         nextClue: nextClueDoc
           ? { text: nextClueDoc.text, imageUrl: nextClueDoc.imageUrl || null }

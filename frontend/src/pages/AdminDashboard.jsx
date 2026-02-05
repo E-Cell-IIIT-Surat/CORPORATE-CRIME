@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../api';
 import toast from 'react-hot-toast';
+import QuestionContent from '../components/QuestionContent';
 import { 
   Users, 
   MapPin, 
@@ -19,7 +20,8 @@ import {
   Clock8,
   ShieldCheck as ShieldIcon,
   FileQuestion,
-  UserCheck
+  UserCheck,
+  Lightbulb
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -28,6 +30,7 @@ const AdminDashboard = () => {
   const [pendingTeams, setPendingTeams] = useState([]);
   const [locations, setLocations] = useState([]);
   const [clues, setClues] = useState([]);
+  const [hints, setHints] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [gameStatus, setGameStatus] = useState({ isStarted: false, isPaused: false, startTime: null });
@@ -38,11 +41,14 @@ const AdminDashboard = () => {
   const [showClueModal, setShowClueModal] = useState(false);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showHintModal, setShowHintModal] = useState(false);
+  const [editingHint, setEditingHint] = useState(null);
   const [newLocation, setNewLocation] = useState({ code: '', order: 1, category: 'ALL', pdfContent: '', answer: '' });
   const [newClue, setNewClue] = useState({ step: 1, category: 'A', text: '', image: null, imageUrl: '' });
-  const [newQuestion, setNewQuestion] = useState({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10, image: null, imageUrl: '' });
+  const [newHint, setNewHint] = useState({ step: 1, category: 'ALL', title: '', content: '' });
+  const [newQuestion, setNewQuestion] = useState({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10 });
   const [cluePreview, setCluePreview] = useState(null);
-  const [questionPreview, setQuestionPreview] = useState(null);
+  const questionInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -141,6 +147,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleResetTeam = async (id) => {
+    if (!window.confirm('Reset this team\'s progress? (Score and progress will be cleared)')) return;
+    const resetToast = toast.loading('Resetting team progress...');
+    try {
+      await adminAPI.resetTeam(id);
+      toast.success('Team progress reset successfully.', { id: resetToast });
+      fetchData();
+    } catch (err) {
+      toast.error('Reset failed.', { id: resetToast });
+    }
+  };
+
   const handleCreateLocation = async (e) => {
     e.preventDefault();
     const createToast = toast.loading('Creating location...');
@@ -193,6 +211,25 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateHint = async (e) => {
+    e.preventDefault();
+    const createToast = toast.loading('Publishing hint...');
+    try {
+      await adminAPI.createHint({
+        step: Number(newHint.step),
+        category: newHint.category,
+        title: newHint.title,
+        content: newHint.content
+      });
+      toast.success('Hint published.', { id: createToast });
+      setShowHintModal(false);
+      setNewHint({ step: 1, category: 'ALL', title: '', content: '' });
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Hint publish failed.', { id: createToast });
+    }
+  };
+
   const handleCreateQuestion = async (e) => {
     e.preventDefault();
     try {
@@ -203,23 +240,50 @@ const AdminDashboard = () => {
       formData.append('correctAnswer', newQuestion.correctAnswer);
       formData.append('points', String(newQuestion.points));
       if (newQuestion.options) formData.append('options', newQuestion.options);
-      
-      // If image file is provided, append it; otherwise use imageUrl
-      if (newQuestion.image) {
-        formData.append('image', newQuestion.image);
-      } else if (newQuestion.imageUrl) {
-        formData.append('imageUrl', newQuestion.imageUrl);
-      }
-      
+
       await adminAPI.createQuestion(formData);
       toast.success('Question deployed.');
       setShowQuestionModal(false);
-      setNewQuestion({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10, image: null, imageUrl: '' });
-      setQuestionPreview(null);
+      setNewQuestion({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10 });
       fetchData();
     } catch (err) {
       toast.error('Question creation failed.');
     }
+  };
+
+  const insertQuestionSnippet = (snippet) => {
+    setNewQuestion((prev) => {
+      const current = prev.question || '';
+      const textarea = questionInputRef.current;
+      if (!textarea) {
+        return { ...prev, question: current + snippet };
+      }
+      const start = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : current.length;
+      const end = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : current.length;
+      const next = current.slice(0, start) + snippet + current.slice(end);
+
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const cursor = start + snippet.length;
+        textarea.setSelectionRange(cursor, cursor);
+      });
+
+      return { ...prev, question: next };
+    });
+  };
+
+  const handleInlineImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        insertQuestionSnippet(`\n\n![image](${reader.result})\n\n`);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleDeleteQuestion = async (id) => {
@@ -244,6 +308,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteHint = async (id) => {
+    if (!window.confirm('Delete this hint?')) return;
+    const deleteToast = toast.loading('Deleting hint...');
+    try {
+      await adminAPI.deleteHint(id);
+      toast.success('Hint deleted.', { id: deleteToast });
+      fetchData();
+    } catch (err) {
+      toast.error('Delete failed.', { id: deleteToast });
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -259,6 +335,9 @@ const AdminDashboard = () => {
       } else if (activeTab === 'clues') {
         const { data } = await adminAPI.getClues();
         setClues(data);
+      } else if (activeTab === 'hints') {
+        const { data } = await adminAPI.getHints();
+        setHints(data);
       } else if (activeTab === 'questions') {
         const { data } = await adminAPI.getQuestions();
         setQuestions(data);
@@ -280,6 +359,7 @@ const AdminDashboard = () => {
     { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
     { id: 'locations', label: 'Locations', icon: MapPin },
     { id: 'clues', label: 'Clues', icon: ShieldIcon },
+    { id: 'hints', label: 'Hints', icon: Lightbulb },
     { id: 'questions', label: 'Questions', icon: FileQuestion },
   ];
 
@@ -442,6 +522,7 @@ const AdminDashboard = () => {
         {/* Top bar */}
         <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 md:px-10 bg-gray-950/50 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-6">
+            <img src="/CORPORATE CRIME.png" alt="Corporate Crime" className="h-14 object-contain" />
             <h1 className="text-2xl font-black capitalize tracking-tight">{activeTab}</h1>
             
             {/* Global Timer */}
@@ -689,49 +770,39 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'leaderboard' && (
-              <div className="space-y-12">
-                {['A','B','C','D','E'].map((cat) => (
-                  <div key={cat} className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="h-px flex-1 bg-white/5" />
-                      <h2 className="text-sm font-black text-gray-500 uppercase tracking-[0.4em]">Category {cat}</h2>
-                      <div className="h-px flex-1 bg-white/5" />
-                    </div>
-                    
-                    <div className="grid gap-4">
-                      {leaderboard[cat]?.length > 0 ? (
-                        leaderboard[cat].map((team, index) => (
-                          <div key={team._id} className="bg-gray-900 p-6 rounded-2xl border border-white/5 flex items-center gap-8 hover:border-red-500/20 transition-all group">
-                            <div className={`text-3xl font-black w-16 h-16 flex items-center justify-center rounded-2xl ${
-                              index === 0 ? 'bg-yellow-500 text-black' : 
-                              index === 1 ? 'bg-gray-300 text-black' : 
-                              index === 2 ? 'bg-amber-700 text-white' : 
-                              'bg-gray-800 text-gray-500'
-                            }`}>
-                              {index + 1}
-                            </div>
-                            <div className="flex-1">
-                              <div className="text-2xl font-black tracking-tight group-hover:text-red-500 transition-colors">{team.name}</div>
-                              <div className="flex items-center gap-4 mt-1">
-                                <span className="text-xs font-bold text-red-500/80 uppercase tracking-widest">{team.penalties} Penalties</span>
-                                <div className="w-1 h-1 rounded-full bg-gray-700" />
-                                <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">Step {team.currentStep}</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-4xl font-black text-green-400 tracking-tighter">{team.score}</div>
-                              <div className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">Total Pts</div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10 text-gray-500 font-bold italic">
-                          No teams in this category yet
+              <div className="space-y-6">
+                {leaderboard.length > 0 ? (
+                  <div className="grid gap-4">
+                    {leaderboard.map((team, index) => (
+                      <div key={team._id} className="bg-gray-900 p-6 rounded-2xl border border-white/5 flex items-center gap-8 hover:border-red-500/20 transition-all group">
+                        <div className={`text-3xl font-black w-16 h-16 flex items-center justify-center rounded-2xl ${
+                          index === 0 ? 'bg-yellow-500 text-black' : 
+                          index === 1 ? 'bg-gray-300 text-black' : 
+                          index === 2 ? 'bg-amber-700 text-white' : 
+                          'bg-gray-800 text-gray-500'
+                        }`}>
+                          {index + 1}
                         </div>
-                      )}
-                    </div>
+                        <div className="flex-1">
+                          <div className="text-2xl font-black tracking-tight group-hover:text-red-500 transition-colors">{team.name}</div>
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-xs font-bold text-red-500/80 uppercase tracking-widest">{team.penalties} Penalties</span>
+                            <div className="w-1 h-1 rounded-full bg-gray-700" />
+                            <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">Step {team.currentStep}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-4xl font-black text-green-400 tracking-tighter">{team.score}</div>
+                          <div className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">Total Pts</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10 text-gray-500 font-bold italic">
+                    No teams in the leaderboard yet
+                  </div>
+                )}
               </div>
             )}
 
@@ -877,6 +948,44 @@ const AdminDashboard = () => {
               </div>
             )}
 
+            {activeTab === 'hints' && (
+              <div className="space-y-8">
+                <button 
+                  onClick={() => setShowHintModal(true)}
+                  className="bg-yellow-500 hover:bg-yellow-400 text-black px-8 py-4 rounded-2xl font-black flex items-center gap-3 transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+                >
+                  <Plus size={24} /> Create New Hint
+                </button>
+
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {hints.map((hint) => (
+                    <div key={hint._id} className="bg-gray-900 p-8 rounded-2xl border border-white/5 group hover:border-white/10 transition-all">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="flex flex-wrap gap-3">
+                          <span className="bg-yellow-500/20 text-yellow-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-yellow-500/20">Step {hint.step}</span>
+                          <span className="bg-white/5 text-gray-400 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5">Cat {hint.category}</span>
+                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${hint.isActive ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
+                            {hint.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                          <button 
+                            onClick={() => handleDeleteHint(hint._id)}
+                            className="p-2 hover:bg-red-500/10 rounded-xl text-red-500/50 hover:text-red-500 transition-colors"
+                            title="Delete Hint"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-black text-white mb-3">{hint.title}</h3>
+                      <p className="text-gray-300 leading-relaxed">{hint.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'questions' && (
               <div className="space-y-8">
                 <button 
@@ -904,16 +1013,13 @@ const AdminDashboard = () => {
                           </button>
                         </div>
                       </div>
-                      {q.imageUrl && (
-                        <img
-                          src={q.imageUrl}
-                          alt={`Question ${q.step}`}
-                          className="w-full h-48 object-cover rounded-xl border border-white/10 mb-6"
-                        />
-                      )}
-                      <p className="text-xl font-medium text-gray-200 leading-relaxed mb-4">
-                        {q.question}
-                      </p>
+                      <QuestionContent
+                        text={q.question}
+                        imageUrl={q.imageUrl}
+                        containerClassName="space-y-4 mb-4"
+                        textClassName="text-xl font-medium text-gray-200 leading-relaxed"
+                        imageClassName="w-full h-48 object-cover rounded-xl border border-white/10"
+                      />
                       {q.options && q.options.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-400">
                           {q.options.map((opt, idx) => (
@@ -1117,6 +1223,79 @@ const AdminDashboard = () => {
         </div>
       )}
 
+      {/* Hint Modal */}
+      {showHintModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-3 sm:p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowHintModal(false)} />
+          <div className="relative bg-gray-900 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-black mb-4 sm:mb-6 md:mb-8 flex items-center gap-2 sm:gap-3">
+              <Lightbulb className="text-yellow-400 size-5 sm:size-6" />
+              <span>ADD HINT</span>
+            </h2>
+            <form onSubmit={handleCreateHint} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Step</label>
+                  <input 
+                    type="number" 
+                    required 
+                    min="1"
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-yellow-500 transition-colors"
+                    value={newHint.step}
+                    onChange={(e) => setNewHint({ ...newHint, step: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Category</label>
+                  <select 
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-yellow-500 transition-colors"
+                    value={newHint.category}
+                    onChange={(e) => setNewHint({ ...newHint, category: e.target.value })}
+                  >
+                    {['ALL','A','B','C','D','E'].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Title</label>
+                <input 
+                  type="text" 
+                  required
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-yellow-500 transition-colors"
+                  value={newHint.title}
+                  onChange={(e) => setNewHint({ ...newHint, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Hint Content</label>
+                <textarea 
+                  required
+                  rows="4"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-yellow-500 transition-colors resize-none"
+                  value={newHint.content}
+                  onChange={(e) => setNewHint({ ...newHint, content: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button 
+                  type="submit"
+                  className="flex-1 bg-yellow-400 hover:bg-yellow-300 text-black px-6 py-3 rounded-xl font-black text-sm transition-all"
+                >
+                  PUBLISH
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowHintModal(false)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 px-6 py-3 rounded-xl font-black text-sm transition-all"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Question Modal */}
       {showQuestionModal && (
         <div className="fixed inset-0 z-100 flex items-center justify-center p-3 sm:p-4">
@@ -1163,14 +1342,25 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Question</label>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Question (Markdown)</label>
                 <textarea
+                  ref={questionInputRef}
                   required
-                  rows="3"
+                  rows="5"
                   className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors resize-none"
                   value={newQuestion.question}
                   onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
+                  placeholder="Type text and use image uploads to insert inline"
                 />
+                <div className="mt-3">
+                  <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Insert Inline Image (Upload)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm text-gray-400"
+                    onChange={handleInlineImageUpload}
+                  />
+                </div>
               </div>
 
               <div>
@@ -1194,43 +1384,6 @@ const AdminDashboard = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image Upload (Local Only)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm text-gray-400"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setNewQuestion({ ...newQuestion, image: file, imageUrl: '' });
-                    setQuestionPreview(file ? URL.createObjectURL(file) : null);
-                  }}
-                />
-              </div>
-              <div className="text-center text-[10px] text-gray-600 font-bold">OR</div>
-              <div>
-                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image URL (For Deployment)</label>
-                <input
-                  type="url"
-                  placeholder="https://example.com/image.jpg"
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm"
-                  value={newQuestion.imageUrl}
-                  onChange={(e) => {
-                    setNewQuestion({ ...newQuestion, imageUrl: e.target.value, image: null });
-                    setQuestionPreview(e.target.value || null);
-                  }}
-                />
-                <p className="text-[9px] text-gray-600 mt-1">Use Imgur, Cloudinary, or any public image URL</p>
-              </div>
-              
-              {questionPreview && (
-                <img
-                  src={questionPreview}
-                  alt="Question preview"
-                  className="mt-3 sm:mt-4 w-full h-32 sm:h-40 object-cover rounded-lg border border-white/10"
-                />
-              )}
-              
               <div className="flex gap-2 sm:gap-4 pt-2 sm:pt-4">
                 <button
                   type="button"

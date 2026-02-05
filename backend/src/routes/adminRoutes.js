@@ -27,7 +27,11 @@ import {
   deleteTeam,
   getPendingTeams,
   approveTeam,
-  rejectTeam
+  rejectTeam,
+  createHint,
+  getHints,
+  updateHint,
+  deleteHint
 } from "../controllers/adminGameController.js";
 
 const router = express.Router();
@@ -67,5 +71,11 @@ router.post("/reset-team/:id", adminProtect, resetTeam);
 router.post("/remove-penalty/:id", adminProtect, removePenalty);
 router.post("/adjust-time/:id", adminProtect, adjustTime);
 router.delete("/team/:id", adminProtect, deleteTeam);
+
+/* HINT MANAGEMENT */
+router.post("/hint", adminProtect, createHint);
+router.get("/hints", adminProtect, getHints);
+router.put("/hint/:id", adminProtect, updateHint);
+router.delete("/hint/:id", adminProtect, deleteHint);
 
 export default router;

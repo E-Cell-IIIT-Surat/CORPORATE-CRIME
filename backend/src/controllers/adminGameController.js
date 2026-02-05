@@ -4,6 +4,7 @@ import Question from "../models/Question.js";
 import ScanLog from "../models/ScanLog.js";
 import QuizAttempt from "../models/QuizAttempt.js";
 import Clue from "../models/Clue.js";
+import Hint from "../models/Hint.js";
 import GameSettings from "../models/GameSettings.js";
 import { fileToBase64 } from "../utils/upload.js";
 
@@ -116,17 +117,20 @@ export const resetTeam = async (req, res) => {
   try {
     const teamId = req.params.id;
 
+    // Reset team progress but keep them on the event's startTime
+    // Don't override startTime - use global event start time for scoring
     await Team.findByIdAndUpdate(teamId, {
       score: 0,
       penalties: 0,
       currentStep: 1,
-      startTime: new Date()
+      lastWrongScanTime: null
     });
 
+    // Clear all previous attempts and scans
     await ScanLog.deleteMany({ teamId });
     await QuizAttempt.deleteMany({ teamId });
 
-    res.json({ message: "Team reset successfully" });
+    res.json({ message: "Team reset successfully. Progress cleared." });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -149,7 +153,6 @@ export const getLeaderboard = async (req, res) => {
   try {
     const leaderboard = await Team.find()
       .sort({ score: -1, penalties: 1, startTime: 1 })
-      .limit(20)
       .select("-password");
 
     res.json(leaderboard);
@@ -416,3 +419,71 @@ export const rejectTeam = async (req, res) => {
   }
 };
 
+/* HINT MANAGEMENT */
+export const createHint = async (req, res) => {
+  try {
+    const { step, category, title, content } = req.body;
+    
+    if (!step || !category || !title || !content) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const hint = await Hint.create({
+      step: Number(step),
+      category,
+      title,
+      content,
+      createdBy: req.admin._id,
+      isActive: true
+    });
+
+    res.status(201).json({ message: "Hint created successfully", hint });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getHints = async (req, res) => {
+  try {
+    const hints = await Hint.find().sort({ step: 1, createdAt: -1 });
+    res.json(hints);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateHint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content, isActive } = req.body;
+
+    const hint = await Hint.findByIdAndUpdate(
+      id,
+      { title, content, isActive },
+      { new: true }
+    );
+
+    if (!hint) {
+      return res.status(404).json({ message: "Hint not found" });
+    }
+
+    res.json({ message: "Hint updated successfully", hint });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteHint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedHint = await Hint.findByIdAndDelete(id);
+    
+    if (!deletedHint) {
+      return res.status(404).json({ message: "Hint not found" });
+    }
+
+    res.json({ message: "Hint deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

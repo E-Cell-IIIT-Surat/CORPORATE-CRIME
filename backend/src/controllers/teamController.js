@@ -113,10 +113,8 @@ export const teamLogin = async (req, res) => {
 export const getMe = async (req, res) => {
   try {
     const team = req.team;
-    // Calculate total steps for the team's category
-    const totalSteps = await Location.countDocuments({ 
-      category: { $in: [team.category, "ALL"] } 
-    });
+    const maxOrderDoc = await Location.findOne().sort({ order: -1 }).select("order");
+    const totalSteps = maxOrderDoc ? maxOrderDoc.order : 0;
     
     res.json({
       ...team.toObject(),

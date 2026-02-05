@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { teamAPI } from '../api';
 import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import QuestionContent from '../components/QuestionContent';
 
 const QuizPage = () => {
   const [quizInfo, setQuizInfo] = useState(null);
@@ -134,55 +135,70 @@ const QuizPage = () => {
                   <div className="text-[8px] sm:text-[10px] font-black text-green-400 uppercase tracking-widest">{q.points} pts</div>
                 </div>
 
-                {q.imageUrl && (
-                  <img
-                    src={q.imageUrl}
-                    alt={`Q${idx + 1}`}
-                    className="w-full max-h-40 sm:max-h-56 md:max-h-64 object-cover rounded-lg sm:rounded-xl border border-white/10"
-                  />
-                )}
-
-                <p className="text-base sm:text-lg md:text-2xl font-bold text-gray-200 leading-relaxed">
-                  {q.question}
-                </p>
+                <QuestionContent
+                  text={q.question}
+                  imageUrl={q.imageUrl}
+                  containerClassName="space-y-4"
+                  textClassName="text-base sm:text-lg md:text-2xl font-bold text-gray-200 leading-relaxed"
+                  imageClassName="w-full max-h-40 sm:max-h-56 md:max-h-64 object-cover rounded-lg sm:rounded-xl border border-white/10"
+                />
 
                 {q.options && q.options.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
-                    {q.options.map((opt, i) => (
-                      <button
-                        key={`${q._id}-${i}`}
-                        type="button"
-                        onClick={() => setAnswers((prev) => ({ ...prev, [q._id]: opt }))}
-                        className={`p-2.5 sm:p-4 md:p-5 rounded-lg sm:rounded-xl border-2 text-left font-bold transition-all text-xs sm:text-sm md:text-base ${
-                          answers[q._id] === opt
-                            ? 'bg-blue-600 border-blue-400 text-white'
-                            : 'bg-black/60 border-white/10 text-gray-400 hover:border-blue-500/60 hover:text-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 sm:gap-4">
-                          <span className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-black flex-shrink-0 ${
-                            answers[q._id] === opt ? 'bg-white text-blue-600' : 'bg-white/10 text-gray-600'
-                          }`}>
-                            {String.fromCharCode(65 + i)}
-                          </span>
-                          <span className="truncate">{opt}</span>
-                        </div>
-                      </button>
-                    ))}
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.35em]">Response Matrix</span>
+                      <span className="text-[9px] sm:text-[10px] font-black text-blue-400 uppercase tracking-[0.25em]">Select One</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
+                      {q.options.map((opt, i) => (
+                        <button
+                          key={`${q._id}-${i}`}
+                          type="button"
+                          onClick={() => setAnswers((prev) => ({ ...prev, [q._id]: opt }))}
+                          className={`group/opt relative overflow-hidden p-3 sm:p-4 md:p-5 rounded-lg sm:rounded-xl border text-left font-bold transition-all text-xs sm:text-sm md:text-base ${
+                            answers[q._id] === opt
+                              ? 'bg-blue-600/20 border-blue-500 text-white shadow-[0_0_24px_rgba(37,99,235,0.3)]'
+                              : 'bg-black/60 border-white/10 text-gray-300 hover:border-blue-500/60 hover:text-white'
+                          }`}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/opt:translate-x-full transition-transform duration-500" />
+                          <div className="relative flex items-center gap-3 sm:gap-4">
+                            <span className={`w-7 h-7 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-black flex-shrink-0 border ${
+                              answers[q._id] === opt
+                                ? 'bg-white text-blue-600 border-white'
+                                : 'bg-white/5 text-gray-500 border-white/10'
+                            }`}>
+                              {String.fromCharCode(65 + i)}
+                            </span>
+                            <span className="line-clamp-2">{opt}</span>
+                          </div>
+                          {answers[q._id] === opt && (
+                            <div className="absolute top-3 right-3 text-[9px] font-black text-blue-300 uppercase tracking-widest">Locked</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
-                  <div className="relative group/input">
-                    <input
-                      type="text"
-                      className="w-full bg-black/40 border-2 border-white/5 rounded-lg sm:rounded-2xl px-3 sm:px-6 py-2 sm:py-4 text-sm sm:text-lg font-bold focus:outline-none focus:border-blue-500/50 focus:bg-black/60 transition-all placeholder:text-gray-700"
-                      placeholder="Answer..."
-                      value={answers[q._id] || ''}
-                      onChange={(e) => setAnswers((prev) => ({ ...prev, [q._id]: e.target.value }))}
-                      disabled={submitting}
-                      required
-                    />
-                    <div className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 opacity-20 group-focus-within/input:opacity-100 transition-opacity">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-ping" />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.35em]">Manual Entry</span>
+                      <span className="text-[9px] sm:text-[10px] font-black text-red-400 uppercase tracking-[0.25em]">Code Required</span>
+                    </div>
+                    <div className="relative group/input">
+                      <div className="absolute inset-0 rounded-lg sm:rounded-2xl border border-blue-500/20 pointer-events-none" />
+                      <input
+                        type="text"
+                        className="w-full bg-black/50 border-2 border-white/5 rounded-lg sm:rounded-2xl px-3 sm:px-6 py-3 sm:py-4 text-sm sm:text-lg font-black tracking-[0.25em] uppercase focus:outline-none focus:border-blue-500/50 focus:bg-black/70 transition-all placeholder:text-gray-700"
+                        placeholder="ENTER ACCESS KEY"
+                        value={answers[q._id] || ''}
+                        onChange={(e) => setAnswers((prev) => ({ ...prev, [q._id]: e.target.value }))}
+                        disabled={submitting}
+                        required
+                      />
+                      <div className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 opacity-30 group-focus-within/input:opacity-100 transition-opacity">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -192,14 +208,15 @@ const QuizPage = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full relative group/btn overflow-hidden"
+              className="w-full relative group/btn overflow-hidden rounded-lg sm:rounded-2xl"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 group-hover/btn:from-blue-500 group-hover/btn:to-indigo-500 transition-all" />
-              <div className="relative py-3 sm:py-5 md:py-6 rounded-lg sm:rounded-2xl flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-base md:text-xl font-black uppercase tracking-widest text-white">
+              <div className="absolute inset-0 bg-gradient-to-r from-red-700 via-red-600 to-red-500 group-hover/btn:from-red-600 group-hover/btn:to-red-400 transition-all" />
+              <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.35),transparent_55%)]" />
+              <div className="relative py-3 sm:py-5 md:py-6 rounded-lg sm:rounded-2xl flex items-center justify-center gap-2 sm:gap-4 text-[10px] sm:text-sm md:text-lg font-black uppercase tracking-[0.35em] sm:tracking-[0.45em] text-white shadow-[0_15px_35px_rgba(239,68,68,0.35)]">
                 {submitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    <span className="hidden xs:inline">Sending</span><span className="inline xs:hidden">...</span>
+                    <span className="hidden xs:inline">Submitting</span><span className="inline xs:hidden">...</span>
                   </>
                 ) : (
                   <>

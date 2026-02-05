@@ -10,6 +10,7 @@ import scanRoutes from "./routes/scanRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import clueRoutes from "./routes/clueRoutes.js";
+import hintRoutes from "./routes/hintRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { ensureDBConnection } from "./middleware/dbMiddleware.js";
 
@@ -55,6 +56,7 @@ app.use("/api/qr", scanRoutes);
 app.use("/api/quiz", quizRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/clue", clueRoutes);
+app.use("/api/hints", hintRoutes);
 
 // 404 handler
 app.use((req, res) => {

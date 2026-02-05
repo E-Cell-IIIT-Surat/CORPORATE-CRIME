@@ -43,6 +43,7 @@ export const teamAPI = {
   getGameStatus: () => api.get('/team/game-status'),
   getLeaderboard: () => api.get('/team/leaderboard'),
   getClue: () => api.get('/clue'),
+  getHints: () => api.get('/hints'),
   scanQR: (qrCode) => api.post('/qr/scan', { qrCode }),
   verifyAnswer: (data) => api.post('/qr/verify', data),
   getQualified: (top) => api.get('/team/qualified', { params: top ? { top } : {} }),
@@ -83,6 +84,10 @@ export const adminAPI = {
     return api.put(`/admin/clue/${id}`, data);
   },
   deleteClue: (id) => api.delete(`/admin/clue/${id}`),
+  getHints: () => api.get('/admin/hints'),
+  createHint: (data) => api.post('/admin/hint', data),
+  updateHint: (id, data) => api.put(`/admin/hint/${id}`, data),
+  deleteHint: (id) => api.delete(`/admin/hint/${id}`),
 };
 
 export default api;

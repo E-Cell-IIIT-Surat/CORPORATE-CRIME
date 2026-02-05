@@ -41,9 +41,7 @@ const PlayerLogin = () => {
           <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-blue-500/60 to-transparent" />
           
           <div className="flex flex-col items-center mb-8 sm:mb-10 md:mb-12">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl shadow-[0_0_30px_rgba(37,99,235,0.45)] mb-4 sm:mb-6 md:mb-8 transform -rotate-3 group-hover:rotate-0 transition-all duration-500">
-              <Command size={28} className="text-white sm:size-10 md:size-12" />
-            </div>
+            <img src="/CORPORATE CRIME.png" alt="Corporate Crime" className="h-24 sm:h-28 md:h-32 mb-4 sm:mb-6 md:mb-8 object-contain" />
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight sm:tracking-tighter text-white mb-2 sm:mb-3 uppercase">Corporate Crime</h1>
             <p className="text-blue-400/70 text-center font-bold text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em]">
               Secure Access Portal
