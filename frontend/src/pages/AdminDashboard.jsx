@@ -522,6 +522,13 @@ const AdminDashboard = () => {
         {/* Top bar */}
         <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 md:px-10 bg-gray-950/50 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-6">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
+              aria-label="Open navigation"
+            >
+              <Menu size={20} className="text-gray-300" />
+            </button>
             <img src="/CORPORATE CRIME.png" alt="Corporate Crime" className="h-14 object-contain" />
             <h1 className="text-2xl font-black capitalize tracking-tight">{activeTab}</h1>
             
