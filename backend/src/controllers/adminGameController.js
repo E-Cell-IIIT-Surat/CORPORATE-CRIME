@@ -230,15 +230,15 @@ export const deleteLocation = async (req, res) => {
 
 export const createQuestion = async (req, res) => {
   try {
-    const { step, category, question, correctAnswer, points, imageUrl, imageBase64 } = req.body;
+    const { step, category, question, correctAnswer, points, imageUrl, imageBase64, image } = req.body;
     const options = parseOptions(req.body.options);
     
     // Priority: uploaded file > base64 > URL from body
     let finalImageUrl = null;
     if (req.file) {
       finalImageUrl = fileToBase64(req.file);
-    } else if (imageBase64) {
-      finalImageUrl = imageBase64;
+    } else if (imageBase64 || image) {
+      finalImageUrl = imageBase64 || image;
     } else if (imageUrl) {
       finalImageUrl = imageUrl;
     }
@@ -261,14 +261,14 @@ export const createQuestion = async (req, res) => {
 
 export const createClue = async (req, res) => {
   try {
-    const { step, category, text, imageUrl, imageBase64 } = req.body;
+    const { step, category, text, imageUrl, imageBase64, image } = req.body;
     
     // Priority: uploaded file > base64 > URL from body
     let finalImageUrl = null;
     if (req.file) {
       finalImageUrl = fileToBase64(req.file);
-    } else if (imageBase64) {
-      finalImageUrl = imageBase64;
+    } else if (imageBase64 || image) {
+      finalImageUrl = imageBase64 || image;
     } else if (imageUrl) {
       finalImageUrl = imageUrl;
     }
@@ -320,10 +320,15 @@ export const updateClue = async (req, res) => {
     // Use uploaded file if available, otherwise keep existing or use provided URL
     if (req.file) {
       update.imageUrl = fileToBase64(req.file);
+    } else if (update.imageBase64 || update.image) {
+      update.imageUrl = update.imageBase64 || update.image;
     } else if (!update.imageUrl) {
       // Don't update imageUrl if not provided
       delete update.imageUrl;
     }
+
+    delete update.image;
+    delete update.imageBase64;
     
     const updatedClue = await Clue.findByIdAndUpdate(id, update, { new: true });
     if (!updatedClue) return res.status(404).json({ message: "Clue not found" });
