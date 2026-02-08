@@ -129,16 +129,22 @@ const PlayerDashboard = () => {
   useEffect(() => {
     fetchStatus();
     fetchClue();
-    fetchLeaderboard();
+    if (showLeaderboard) fetchLeaderboard();
+
+    const baseInterval = 15000;
     const interval = setInterval(() => {
-      fetchGameStatus();
-      fetchLeaderboard();
-      fetchStatus();
-      // Additionally check qualification when event is not running
-      if (!gameStatus.isStarted) fetchQualification();
-    }, 5000); // Increased polling frequency for better sync
+      const jitter = Math.floor(Math.random() * 2500);
+      setTimeout(() => {
+        fetchGameStatus();
+        fetchStatus();
+        if (showLeaderboard) fetchLeaderboard();
+        // Additionally check qualification when event is not running
+        if (!gameStatus.isStarted) fetchQualification();
+      }, jitter);
+    }, baseInterval);
+
     return () => clearInterval(interval);
-  }, [gameStatus.isStarted]);
+  }, [gameStatus.isStarted, showLeaderboard]);
 
   useEffect(() => {
     if (gameStatus.isStarted) {
