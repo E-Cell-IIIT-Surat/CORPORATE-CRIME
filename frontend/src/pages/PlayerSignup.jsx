@@ -5,6 +5,7 @@ import { ShieldCheck, UserPlus, ArrowRight, Target, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast';
 
 const PlayerSignup = () => {
+  const MAX_MEMBERS = 3;
   const [formData, setFormData] = useState({ 
     teamName: '', 
     password: '',
@@ -17,6 +18,10 @@ const PlayerSignup = () => {
   const navigate = useNavigate();
 
   const handleAddMember = () => {
+    if (formData.members.length >= MAX_MEMBERS) {
+      toast.error(`Maximum ${MAX_MEMBERS} members allowed`);
+      return;
+    }
     if (newMember.name && newMember.email) {
       setFormData({
         ...formData,
@@ -154,6 +159,7 @@ const PlayerSignup = () => {
               <div className="space-y-3 mb-4">
                 <input
                   type="text"
+                  disabled={formData.members.length >= MAX_MEMBERS}
                   className="w-full bg-black/50 border border-blue-500/10 rounded-lg px-3 sm:px-5 py-2 sm:py-3 text-sm text-white focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/40 transition-all placeholder:text-gray-700 font-bold"
                   placeholder="Member Name"
                   value={newMember.name}
@@ -161,6 +167,7 @@ const PlayerSignup = () => {
                 />
                 <input
                   type="email"
+                  disabled={formData.members.length >= MAX_MEMBERS}
                   className="w-full bg-black/50 border border-blue-500/10 rounded-lg px-3 sm:px-5 py-2 sm:py-3 text-sm text-white focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/40 transition-all placeholder:text-gray-700 font-bold"
                   placeholder="Member Email"
                   value={newMember.email}
@@ -169,9 +176,10 @@ const PlayerSignup = () => {
                 <button
                   type="button"
                   onClick={handleAddMember}
-                  className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 font-bold py-2 rounded-lg text-sm transition-all"
+                  disabled={formData.members.length >= MAX_MEMBERS}
+                  className="w-full bg-blue-500/20 hover:bg-blue-500/30 disabled:bg-gray-800 disabled:text-gray-500 text-blue-400 font-bold py-2 rounded-lg text-sm transition-all"
                 >
-                  + Add Member
+                  + Add Member ({formData.members.length}/{MAX_MEMBERS})
                 </button>
               </div>
 
