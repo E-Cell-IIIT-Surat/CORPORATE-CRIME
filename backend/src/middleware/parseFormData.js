@@ -54,10 +54,12 @@ export const parseFormData = (req, res, next) => {
             }
           }
         } else {
-          // Handle text field
-          const valueMatch = part.split('\r\n\r\n')[1];
-          if (valueMatch) {
-            const value = valueMatch.split('\r\n')[0];
+          // Handle text field (preserve multi-line values)
+          const headerEndIndex = part.indexOf('\r\n\r\n');
+          if (headerEndIndex !== -1) {
+            const contentStart = headerEndIndex + 4;
+            const contentEnd = part.lastIndexOf('\r\n');
+            const value = part.substring(contentStart, contentEnd !== -1 ? contentEnd : part.length);
             if (value && !value.includes('Content-Type:')) {
               formData[fieldName] = value;
             }

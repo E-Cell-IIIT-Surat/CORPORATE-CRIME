@@ -17,6 +17,38 @@ const QuizPage = () => {
     fetchQuiz();
   }, []);
 
+  const renderQuestionText = (text) => {
+    const content = String(text || '');
+    const lines = content
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (lines.length === 0) return null;
+
+    const [headingLine, ...rest] = lines;
+
+    return (
+      <div className="space-y-3 sm:space-y-4 text-left">
+        <div className="inline-flex items-center gap-2 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/30">
+          <span className="text-[8px] sm:text-[10px] font-black text-blue-400 uppercase tracking-[0.35em]">Challenge</span>
+        </div>
+        <h3 className="text-base sm:text-lg md:text-2xl font-black text-gray-100 leading-relaxed">
+          {headingLine}
+        </h3>
+        {rest.length > 0 ? (
+          <ol className="list-decimal pl-6 sm:pl-7 space-y-1.5 sm:space-y-2 text-sm sm:text-base md:text-lg text-blue-300/90 font-semibold">
+            {rest.map((line, index) => (
+              <li key={`qline-${index}`} className="leading-relaxed">
+                {line}
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </div>
+    );
+  };
+
   const fetchQuiz = async () => {
     try {
       const { data } = await teamAPI.getQuiz();
@@ -128,20 +160,36 @@ const QuizPage = () => {
                 {formError}
               </div>
             )}
-            {quizInfo.questions.map((q, idx) => (
-              <div key={q._id} className="bg-black/40 border border-white/5 rounded-lg sm:rounded-2xl p-3 sm:p-6 md:p-8 space-y-3 sm:space-y-6">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">Q{idx + 1}</div>
-                  <div className="text-[8px] sm:text-[10px] font-black text-green-400 uppercase tracking-widest">{q.points} pts</div>
-                </div>
+            {quizInfo.questions.map((q, idx) => {
+              const hasInlineImage = /!\[[^\]]*\]\([^)]+\)/.test(String(q.question || ''));
 
-                <QuestionContent
-                  text={q.question}
-                  imageUrl={q.imageUrl}
-                  containerClassName="space-y-4"
-                  textClassName="text-base sm:text-lg md:text-2xl font-bold text-gray-200 leading-relaxed"
-                  imageClassName="w-full max-h-40 sm:max-h-56 md:max-h-64 object-cover rounded-lg sm:rounded-xl border border-white/10"
-                />
+              return (
+                <div key={q._id} className="bg-black/40 border border-white/5 rounded-lg sm:rounded-2xl p-3 sm:p-6 md:p-8 space-y-3 sm:space-y-6">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">Q{idx + 1}</div>
+                    <div className="text-[8px] sm:text-[10px] font-black text-green-400 uppercase tracking-widest">{q.points} pts</div>
+                  </div>
+
+                  {hasInlineImage ? (
+                    <QuestionContent
+                      text={q.question}
+                      imageUrl={q.imageUrl}
+                      containerClassName="space-y-4"
+                      textClassName="text-base sm:text-lg md:text-2xl font-bold text-gray-200 leading-relaxed"
+                      imageClassName="w-full max-h-40 sm:max-h-56 md:max-h-64 object-cover rounded-lg sm:rounded-xl border border-white/10"
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      {renderQuestionText(q.question)}
+                      {q.imageUrl ? (
+                        <img
+                          src={q.imageUrl}
+                          alt="Question"
+                          className="w-full max-h-40 sm:max-h-56 md:max-h-64 object-cover rounded-lg sm:rounded-xl border border-white/10"
+                        />
+                      ) : null}
+                    </div>
+                  )}
 
                 {q.options && q.options.length > 0 ? (
                   <div className="space-y-3 sm:space-y-4">
@@ -202,8 +250,9 @@ const QuizPage = () => {
                     </div>
                   </div>
                 )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
 
             <button
               type="submit"
