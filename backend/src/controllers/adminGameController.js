@@ -273,9 +273,22 @@ export const createClue = async (req, res) => {
       finalImageUrl = imageUrl;
     }
     
+    const stepValue = Number(step);
+    const categoryValue = category || "ALL";
+
+    const existing = await Clue.findOne({ step: stepValue, category: categoryValue });
+    if (existing) {
+      existing.text = text;
+      if (finalImageUrl) {
+        existing.imageUrl = finalImageUrl;
+      }
+      await existing.save();
+      return res.status(200).json(existing);
+    }
+
     const clue = await Clue.create({
-      step: Number(step),
-      category: category || "ALL",
+      step: stepValue,
+      category: categoryValue,
       text,
       imageUrl: finalImageUrl
     });
