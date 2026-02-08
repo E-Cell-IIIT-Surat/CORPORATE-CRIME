@@ -48,6 +48,7 @@ const PlayerDashboard = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [isQualified, setIsQualified] = useState(false);
+  const [showIntroVideo, setShowIntroVideo] = useState(true);
   const navigate = useNavigate();
 
   const fetchStatus = async () => {
@@ -142,6 +143,12 @@ const PlayerDashboard = () => {
   useEffect(() => {
     if (gameStatus.isStarted) {
       fetchStatus();
+    }
+  }, [gameStatus.isStarted]);
+
+  useEffect(() => {
+    if (gameStatus.isStarted) {
+      setShowIntroVideo(false);
     }
   }, [gameStatus.isStarted]);
 
@@ -374,7 +381,20 @@ const PlayerDashboard = () => {
           </div>
         </div>
         {/* Full Screen Status Overlays */}
-        {!gameStatus.isStarted && (
+        {!gameStatus.isStarted && showIntroVideo && (
+          <div className="fixed inset-0 z-200 bg-black flex items-center justify-center">
+            <video
+              src="/event_coporate.mp4"
+              className="w-full h-full object-contain"
+              autoPlay
+              controls
+              playsInline
+              onEnded={() => setShowIntroVideo(false)}
+            />
+          </div>
+        )}
+
+        {!gameStatus.isStarted && !showIntroVideo && (
           <div className="fixed inset-0 z-200 bg-[#020617] flex flex-col items-center justify-center p-6">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-blue-500/5 blur-[120px] rounded-full animate-pulse" />
@@ -401,7 +421,7 @@ const PlayerDashboard = () => {
                   <div className="h-px w-12 bg-linear-to-l from-transparent to-blue-500/50" />
                 </div>
               </div>
-              
+
               <div className="bg-black/80 backdrop-blur-xl p-12 rounded-3xl border-2 border-blue-500/20 shadow-2xl space-y-8">
                 <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-blue-500 to-transparent" />
                 
