@@ -48,7 +48,7 @@ const PlayerDashboard = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [isQualified, setIsQualified] = useState(false);
-  const [showIntroVideo, setShowIntroVideo] = useState(true);
+  const [showIntroVideo, setShowIntroVideo] = useState(false);
   const navigate = useNavigate();
 
   const fetchStatus = async () => {
@@ -147,8 +147,12 @@ const PlayerDashboard = () => {
   }, [gameStatus.isStarted]);
 
   useEffect(() => {
-    if (gameStatus.isStarted) {
-      setShowIntroVideo(false);
+    if (!gameStatus.isStarted) return;
+
+    const introKey = 'introVideoSeen';
+    const hasSeenIntro = localStorage.getItem(introKey) === 'true';
+    if (!hasSeenIntro) {
+      setShowIntroVideo(true);
     }
   }, [gameStatus.isStarted]);
 
@@ -381,20 +385,23 @@ const PlayerDashboard = () => {
           </div>
         </div>
         {/* Full Screen Status Overlays */}
-        {!gameStatus.isStarted && showIntroVideo && (
-          <div className="fixed inset-0 z-200 bg-black flex items-center justify-center">
+        {gameStatus.isStarted && showIntroVideo && (
+          <div className="fixed inset-0 z-200 bg-black w-screen h-[100svh] flex items-center justify-center">
             <video
               src="/event_coporate.mp4"
-              className="w-full h-full object-contain"
+              className="block w-screen h-[100svh] max-w-full max-h-[100svh] object-contain"
               autoPlay
               controls
               playsInline
-              onEnded={() => setShowIntroVideo(false)}
+              onEnded={() => {
+                localStorage.setItem('introVideoSeen', 'true');
+                setShowIntroVideo(false);
+              }}
             />
           </div>
         )}
 
-        {!gameStatus.isStarted && !showIntroVideo && (
+        {!gameStatus.isStarted && (
           <div className="fixed inset-0 z-200 bg-[#020617] flex flex-col items-center justify-center p-6">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-blue-500/5 blur-[120px] rounded-full animate-pulse" />
