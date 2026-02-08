@@ -716,6 +716,14 @@ const AdminDashboard = () => {
                         <tr key={team._id} className="hover:bg-white/5 transition-colors group">
                           <td className="px-8 py-6 font-bold text-lg">
                             {team.name}
+                            <div className="mt-2 space-y-1 text-xs font-medium text-gray-500">
+                              <div>Lead: <span className="text-gray-300">{team.teamLeaderEmail || 'N/A'}</span></div>
+                              {team.members && team.members.length > 0 && (
+                                <div className="text-gray-400">
+                                  Members: {team.members.map((member) => member.email).filter(Boolean).join(', ') || 'N/A'}
+                                </div>
+                              )}
+                            </div>
                             <div className="text-[10px] text-gray-500 font-medium">ID: {team._id.slice(-6)}</div>
                           </td>
                           <td className="px-8 py-6 text-center">
@@ -776,6 +784,14 @@ const AdminDashboard = () => {
                           <span className="inline-block mt-1 bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border border-white/5">
                             Category {team.category}
                           </span>
+                          <div className="mt-3 space-y-1 text-xs font-medium text-gray-500">
+                            <div>Lead: <span className="text-gray-300">{team.teamLeaderEmail || 'N/A'}</span></div>
+                            {team.members && team.members.length > 0 && (
+                              <div className="text-gray-400">
+                                Members: {team.members.map((member) => member.email).filter(Boolean).join(', ') || 'N/A'}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <button 
                           onClick={() => handleResetTeam(team._id)}

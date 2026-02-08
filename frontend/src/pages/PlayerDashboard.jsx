@@ -57,7 +57,7 @@ const PlayerDashboard = () => {
       setTeam(teamData);
 
       if (teamData.lastWrongScanTime) {
-        const SCAN_COOLDOWN = 60000;
+        const SCAN_COOLDOWN = 5000;
         const timeSinceLastWrong = Date.now() - new Date(teamData.lastWrongScanTime).getTime();
         if (timeSinceLastWrong < SCAN_COOLDOWN) {
           setCooldown(Math.ceil((SCAN_COOLDOWN - timeSinceLastWrong) / 1000));
@@ -224,7 +224,7 @@ const PlayerDashboard = () => {
       if (scanToast) toast.dismiss(scanToast);
       const status = err.response?.status;
       if (status === 400 || status === 429 || status === 404) {
-        const remaining = err.response?.data?.remainingSeconds || 60;
+        const remaining = err.response?.data?.remainingSeconds || 5;
         setCooldown(remaining);
         setShowScanner(false);
         toast.error(err.response?.data?.message || 'Security breach detected. Lockout initiated.');
