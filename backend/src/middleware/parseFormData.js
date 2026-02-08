@@ -7,16 +7,16 @@ export const parseFormData = (req, res, next) => {
     return next();
   }
 
-  let body = '';
   const chunks = [];
   
   req.on('data', chunk => {
     chunks.push(chunk);
-    body += chunk.toString();
   });
 
   req.on('end', () => {
     try {
+      const body = Buffer.concat(chunks).toString('latin1');
+
       // Extract boundary from content-type header
       const boundary = req.headers['content-type'].split('boundary=')[1];
       if (!boundary) {
@@ -49,7 +49,7 @@ export const parseFormData = (req, res, next) => {
             const fileContent = part.substring(contentStart, contentEnd);
             
             if (fileContent && mimeType.startsWith('image/')) {
-              const base64 = Buffer.from(fileContent, 'binary').toString('base64');
+              const base64 = Buffer.from(fileContent, 'latin1').toString('base64');
               formData[fieldName] = `data:${mimeType};base64,${base64}`;
             }
           }
