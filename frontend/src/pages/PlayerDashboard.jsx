@@ -386,7 +386,7 @@ const PlayerDashboard = () => {
         </div>
         {/* Full Screen Status Overlays */}
         {gameStatus.isStarted && showIntroVideo && (
-          <div className="fixed inset-0 z-200 bg-black w-screen h-[100svh] flex items-center justify-center">
+          <div className="fixed inset-0 z-[200] bg-black w-screen h-[100svh] overflow-hidden flex items-center justify-center">
             <video
               src="/event_coporate.mp4"
               className="block w-screen h-[100svh] max-w-full max-h-[100svh] object-contain"
@@ -402,7 +402,8 @@ const PlayerDashboard = () => {
         )}
 
         {!gameStatus.isStarted && (
-          <div className="fixed inset-0 z-200 bg-[#020617] flex flex-col items-center justify-center p-6">
+          <div className="fixed inset-0 z-[200] bg-[#020617] w-screen h-[100svh] overflow-hidden">
+            <div className="flex min-h-[100svh] flex-col items-center justify-center p-6">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-blue-500/5 blur-[120px] rounded-full animate-pulse" />
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]" />
@@ -449,6 +450,7 @@ const PlayerDashboard = () => {
               >
                 Abort Mission
               </button>
+            </div>
             </div>
           </div>
         )}

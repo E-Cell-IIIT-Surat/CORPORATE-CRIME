@@ -159,6 +159,30 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleApproveTeam = async (id) => {
+    const approveToast = toast.loading('Approving team...');
+    try {
+      await adminAPI.approveTeam(id);
+      toast.success('Team approved.', { id: approveToast });
+      fetchData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Approval failed.';
+      toast.error(msg, { id: approveToast });
+    }
+  };
+
+  const handleRejectTeam = async (id) => {
+    const rejectToast = toast.loading('Rejecting team...');
+    try {
+      await adminAPI.rejectTeam(id);
+      toast.success('Team rejected.', { id: rejectToast });
+      fetchData();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Rejection failed.';
+      toast.error(msg, { id: rejectToast });
+    }
+  };
+
   const handleCreateLocation = async (e) => {
     e.preventDefault();
     const createToast = toast.loading('Creating location...');
