@@ -49,6 +49,8 @@ const PlayerDashboard = () => {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [isQualified, setIsQualified] = useState(false);
   const [showIntroVideo, setShowIntroVideo] = useState(false);
+  const [showMeme, setShowMeme] = useState(false);
+  const [memeUrl, setMemeUrl] = useState(null);
   const navigate = useNavigate();
 
   const fetchStatus = async () => {
@@ -57,7 +59,7 @@ const PlayerDashboard = () => {
       setTeam(teamData);
 
       if (teamData.lastWrongScanTime) {
-        const SCAN_COOLDOWN = 5000;
+        const SCAN_COOLDOWN = 30000;
         const timeSinceLastWrong = Date.now() - new Date(teamData.lastWrongScanTime).getTime();
         if (timeSinceLastWrong < SCAN_COOLDOWN) {
           setCooldown(Math.ceil((SCAN_COOLDOWN - timeSinceLastWrong) / 1000));
@@ -229,13 +231,18 @@ const PlayerDashboard = () => {
       clearTimeout(toastTimer);
       if (scanToast) toast.dismiss(scanToast);
       const status = err.response?.status;
+      const meme = err.response?.data?.memeUrl;
+      if (meme) {
+        setMemeUrl(meme);
+        setShowMeme(true);
+      }
       if (status === 400 || status === 429 || status === 404) {
         const remaining = err.response?.data?.remainingSeconds || 5;
         setCooldown(remaining);
         setShowScanner(false);
-        toast.error(err.response?.data?.message || 'Security breach detected. Lockout initiated.');
+        toast.error('Security breach detected. Lockout initiated.');
       } else {
-        toast.error(err.response?.data?.message || 'Scan failed');
+        toast.error('Scan failed. Try again.');
       }
     }
   };
@@ -300,6 +307,8 @@ const PlayerDashboard = () => {
     </div>
   );
 
+  const isEventComplete = Number(team?.currentStep) >= 8;
+
   return (
     <div className="min-h-screen bg-[#020617] text-white w-full font-sans selection:bg-blue-500/30">
       <style>{`
@@ -361,7 +370,7 @@ const PlayerDashboard = () => {
           <div className="flex flex-col gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tight mb-2">
-                MISSION DASHBOARD <span className="text-blue-500">// PHASE {team.currentStep}</span>
+                MISSION DASHBOARD <span className="text-blue-500">// {isEventComplete ? 'PHASE COMPLETE' : `PHASE ${team.currentStep}`}</span>
               </h1>
               <p className="text-gray-400 text-sm font-medium">Corporate Intelligence Operations</p>
             </div>
@@ -495,7 +504,56 @@ const PlayerDashboard = () => {
 
         {/* Intel Target Card */}
         <div className="relative">
-          {locationId === null ? (
+          {isEventComplete ? (
+            <div className="bg-linear-to-br from-blue-950/30 via-black to-black border-2 border-blue-500/30 p-6 sm:p-10 rounded-2xl relative overflow-hidden shadow-[0_0_60px_rgba(37,99,235,0.2)]">
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-green-500/10 blur-[120px] rounded-full" />
+              </div>
+              <div className="relative z-10 space-y-8 text-center">
+                <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.35)]">
+                  <Trophy className="text-green-400" size={36} />
+                </div>
+                <div className="space-y-3">
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
+                    <span className="text-white">Event</span>{' '}
+                    <span className="text-green-400">Completed</span>
+                  </h2>
+                  <p className="text-gray-300 text-sm sm:text-base font-semibold">
+                    Congratulations, Agent. You cleared all 8 phases. Stand by for results.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="bg-black/60 border border-green-500/20 rounded-xl p-4">
+                    <div className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Final Score</div>
+                    <div className="text-2xl font-black text-white">{team.score.toString().padStart(3, '0')}</div>
+                  </div>
+                  <div className="bg-black/60 border border-blue-500/20 rounded-xl p-4">
+                    <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Final Rank</div>
+                    <div className="text-2xl font-black text-white">#{leaderboard.findIndex(t => t._id === team._id) + 1 || '01'}</div>
+                  </div>
+                  <div className="bg-black/60 border border-white/10 rounded-xl p-4">
+                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Time</div>
+                    <div className="text-2xl font-black text-white">{elapsedTime}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={() => setShowLeaderboard(true)}
+                    className="bg-green-500 text-black font-black uppercase tracking-widest text-xs sm:text-sm px-6 py-3 rounded-xl shadow-[0_10px_30px_rgba(34,197,94,0.35)] hover:bg-green-400 transition-colors"
+                  >
+                    View Rankings
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="bg-white/5 text-gray-300 font-black uppercase tracking-widest text-xs sm:text-sm px-6 py-3 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
+                  >
+                    Exit
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : locationId === null ? (
             <div className="bg-linear-to-br from-blue-950/20 via-black to-black border-2 border-blue-500/30 p-6 md:p-10 rounded-xl relative overflow-hidden shadow-[0_0_50px_rgba(37,99,235,0.15)]">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl" />
               
@@ -798,6 +856,30 @@ const PlayerDashboard = () => {
           </div>
           <div className="flex-1 relative bg-black">
             <QRScanner onScanSuccess={handleScanSuccess} />
+          </div>
+        </div>
+      )}
+
+      {/* Meme Overlay */}
+      {showMeme && memeUrl && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="absolute inset-0" onClick={() => setShowMeme(false)} />
+          <div className="relative max-w-lg w-full bg-gray-950 border border-white/10 rounded-2xl p-4 sm:p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm sm:text-base font-black uppercase tracking-widest text-white">Wrong QR Meme</h3>
+              <button
+                onClick={() => setShowMeme(false)}
+                className="bg-white/5 hover:bg-white/10 p-2 rounded-lg"
+                aria-label="Close meme"
+              >
+                <X size={18} className="sm:size-5" />
+              </button>
+            </div>
+            <img
+              src={memeUrl}
+              alt="Wrong QR meme"
+              className="w-full max-h-[65vh] object-contain rounded-xl border border-white/10"
+            />
           </div>
         </div>
       )}

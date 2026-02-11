@@ -6,6 +6,7 @@ import QuizAttempt from "../models/QuizAttempt.js";
 import Clue from "../models/Clue.js";
 import Hint from "../models/Hint.js";
 import GameSettings from "../models/GameSettings.js";
+import Meme from "../models/Meme.js";
 import { fileToBase64 } from "../utils/upload.js";
 
 const parseOptions = (options) => {
@@ -374,6 +375,52 @@ export const deleteQuestion = async (req, res) => {
     const deleted = await Question.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Question not found" });
     res.json({ message: "Question deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/* MEME MANAGEMENT */
+export const createMeme = async (req, res) => {
+  try {
+    const { imageUrl, imageBase64, image } = req.body;
+
+    let finalImageUrl = null;
+    if (req.file) {
+      finalImageUrl = fileToBase64(req.file);
+    } else if (imageBase64 || image) {
+      finalImageUrl = imageBase64 || image;
+    } else if (imageUrl) {
+      finalImageUrl = imageUrl;
+    }
+
+    if (!finalImageUrl) {
+      return res.status(400).json({ message: "Meme image is required" });
+    }
+
+    const created = await Meme.create({ imageUrl: finalImageUrl });
+    res.status(201).json(created);
+  } catch (error) {
+    console.error("Create Meme Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getMemes = async (req, res) => {
+  try {
+    const memes = await Meme.find().sort({ createdAt: -1 });
+    res.json(memes);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteMeme = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Meme.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Meme not found" });
+    res.json({ message: "Meme deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

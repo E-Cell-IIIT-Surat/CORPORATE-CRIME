@@ -4,6 +4,7 @@ import Question from "../models/Question.js";
 import ScanLog from "../models/ScanLog.js";
 import Clue from "../models/Clue.js";
 import GameSettings from "../models/GameSettings.js";
+import Meme from "../models/Meme.js";
 import { SCAN_COOLDOWN } from "../utils/constants.js";
 import { calculateCodeforcesScore } from "./quizController.js";
 
@@ -16,6 +17,14 @@ const pickNewCategory = (currentCategory) => {
   return choices[Math.floor(Math.random() * choices.length)];
 };
 
+const getRandomMemeUrl = async () => {
+  const count = await Meme.countDocuments({ isActive: true });
+  if (!count) return null;
+  const skip = Math.floor(Math.random() * count);
+  const meme = await Meme.findOne({ isActive: true }).skip(skip).select("imageUrl");
+  return meme?.imageUrl || null;
+};
+
 export const scanQR = async (req, res) => {
   try {
     const { qrCode } = req.body;
@@ -24,8 +33,10 @@ export const scanQR = async (req, res) => {
     // Normalize QR code - trim whitespace and handle empty input
     const normalizedQR = qrCode?.toString().trim();
     if (!normalizedQR) {
+      const memeUrl = await getRandomMemeUrl();
       return res.status(400).json({
-        message: "Invalid scan data. Please try again."
+        message: "Invalid scan data. Please try again.",
+        memeUrl
       });
     }
 
@@ -53,9 +64,12 @@ export const scanQR = async (req, res) => {
         isCorrect: false
       });
 
+      const memeUrl = await getRandomMemeUrl();
+
       return res.status(404).json({
         message: "Invalid QR Code detected. Try again.",
-        remainingSeconds: SCAN_COOLDOWN / 1000
+        remainingSeconds: SCAN_COOLDOWN / 1000,
+        memeUrl
       });
     }
 
@@ -71,9 +85,12 @@ export const scanQR = async (req, res) => {
         isCorrect: false
       });
 
+      const memeUrl = await getRandomMemeUrl();
+
       return res.status(400).json({
         message: "Incorrect Location Sequence. Try the current objective.",
-        cooldown: SCAN_COOLDOWN / 1000
+        cooldown: SCAN_COOLDOWN / 1000,
+        memeUrl
       });
     }
 

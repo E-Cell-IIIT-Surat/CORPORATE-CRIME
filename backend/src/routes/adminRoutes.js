@@ -31,7 +31,10 @@ import {
   createHint,
   getHints,
   updateHint,
-  deleteHint
+  deleteHint,
+  createMeme,
+  getMemes,
+  deleteMeme
 } from "../controllers/adminGameController.js";
 
 const router = express.Router();
@@ -77,5 +80,10 @@ router.post("/hint", adminProtect, createHint);
 router.get("/hints", adminProtect, getHints);
 router.put("/hint/:id", adminProtect, updateHint);
 router.delete("/hint/:id", adminProtect, deleteHint);
+
+/* MEME MANAGEMENT */
+router.post("/meme", adminProtect, useUpload, createMeme);
+router.get("/memes", adminProtect, getMemes);
+router.delete("/meme/:id", adminProtect, deleteMeme);
 
 export default router;

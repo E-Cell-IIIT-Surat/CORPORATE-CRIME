@@ -21,7 +21,8 @@ import {
   ShieldCheck as ShieldIcon,
   FileQuestion,
   UserCheck,
-  Lightbulb
+  Lightbulb,
+  Image
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -32,6 +33,7 @@ const AdminDashboard = () => {
   const [clues, setClues] = useState([]);
   const [hints, setHints] = useState([]);
   const [questions, setQuestions] = useState([]);
+  const [memes, setMemes] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [gameStatus, setGameStatus] = useState({ isStarted: false, isPaused: false, startTime: null });
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -42,12 +44,15 @@ const AdminDashboard = () => {
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showHintModal, setShowHintModal] = useState(false);
+  const [showMemeModal, setShowMemeModal] = useState(false);
   const [editingHint, setEditingHint] = useState(null);
   const [newLocation, setNewLocation] = useState({ code: '', order: 1, category: 'ALL', pdfContent: '', answer: '' });
   const [newClue, setNewClue] = useState({ step: 1, category: 'A', text: '', image: null, imageUrl: '' });
   const [newHint, setNewHint] = useState({ step: 1, category: 'ALL', title: '', content: '' });
   const [newQuestion, setNewQuestion] = useState({ step: 1, category: 'A', question: '', options: '', correctAnswer: '', points: 10 });
+  const [newMeme, setNewMeme] = useState({ image: null, imageUrl: '' });
   const [cluePreview, setCluePreview] = useState(null);
+  const [memePreview, setMemePreview] = useState(null);
   const questionInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -254,6 +259,28 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateMeme = async (e) => {
+    e.preventDefault();
+    const createToast = toast.loading('Uploading meme...');
+    try {
+      const formData = new FormData();
+      if (newMeme.image) {
+        formData.append('image', newMeme.image);
+      }
+      if (newMeme.imageUrl) {
+        formData.append('imageUrl', newMeme.imageUrl);
+      }
+      await adminAPI.createMeme(formData);
+      toast.success('Meme added.', { id: createToast });
+      setShowMemeModal(false);
+      setNewMeme({ image: null, imageUrl: '' });
+      setMemePreview(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Meme upload failed.', { id: createToast });
+    }
+  };
+
   const handleCreateQuestion = async (e) => {
     e.preventDefault();
     try {
@@ -344,6 +371,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteMeme = async (id) => {
+    if (!window.confirm('Delete this meme?')) return;
+    const deleteToast = toast.loading('Deleting meme...');
+    try {
+      await adminAPI.deleteMeme(id);
+      toast.success('Meme deleted.', { id: deleteToast });
+      fetchData();
+    } catch (err) {
+      toast.error('Delete failed.', { id: deleteToast });
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -362,6 +401,9 @@ const AdminDashboard = () => {
       } else if (activeTab === 'hints') {
         const { data } = await adminAPI.getHints();
         setHints(data);
+      } else if (activeTab === 'memes') {
+        const { data } = await adminAPI.getMemes();
+        setMemes(data);
       } else if (activeTab === 'questions') {
         const { data } = await adminAPI.getQuestions();
         setQuestions(data);
@@ -384,6 +426,7 @@ const AdminDashboard = () => {
     { id: 'locations', label: 'Locations', icon: MapPin },
     { id: 'clues', label: 'Clues', icon: ShieldIcon },
     { id: 'hints', label: 'Hints', icon: Lightbulb },
+    { id: 'memes', label: 'Memes', icon: Image },
     { id: 'questions', label: 'Questions', icon: FileQuestion },
   ];
 
@@ -1033,6 +1076,39 @@ const AdminDashboard = () => {
               </div>
             )}
 
+            {activeTab === 'memes' && (
+              <div className="space-y-8">
+                <button
+                  onClick={() => setShowMemeModal(true)}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-black px-8 py-4 rounded-2xl font-black flex items-center gap-3 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+                >
+                  <Plus size={24} /> Add Meme
+                </button>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {memes.map((meme) => (
+                    <div key={meme._id} className="bg-gray-900 p-5 rounded-2xl border border-white/5 group hover:border-white/10 transition-all">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Meme</span>
+                        <button
+                          onClick={() => handleDeleteMeme(meme._id)}
+                          className="p-2 hover:bg-red-500/10 rounded-xl text-red-500/60 hover:text-red-500 transition-colors"
+                          title="Delete Meme"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                      <img
+                        src={meme.imageUrl}
+                        alt="Meme"
+                        className="w-full h-48 object-cover rounded-xl border border-white/10"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'questions' && (
               <div className="space-y-8">
                 <button 
@@ -1333,6 +1409,72 @@ const AdminDashboard = () => {
                 <button 
                   type="button"
                   onClick={() => setShowHintModal(false)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 px-6 py-3 rounded-xl font-black text-sm transition-all"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Meme Modal */}
+      {showMemeModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-3 sm:p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowMemeModal(false)} />
+          <div className="relative bg-gray-900 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-black mb-4 sm:mb-6 md:mb-8 flex items-center gap-2 sm:gap-3">
+              <Image className="text-emerald-400 size-5 sm:size-6" />
+              <span>ADD MEME</span>
+            </h2>
+            <form onSubmit={handleCreateMeme} className="space-y-4 sm:space-y-6">
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image Upload</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm text-gray-400"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setNewMeme({ image: file, imageUrl: '' });
+                    setMemePreview(file ? URL.createObjectURL(file) : null);
+                  }}
+                />
+              </div>
+              <div className="text-center text-[10px] text-gray-600 font-bold">OR</div>
+              <div>
+                <label className="block text-[8px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Image URL</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/meme.jpg"
+                  className="w-full bg-black/50 border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-[11px] sm:text-sm"
+                  value={newMeme.imageUrl}
+                  onChange={(e) => {
+                    setNewMeme({ image: null, imageUrl: e.target.value });
+                    setMemePreview(e.target.value || null);
+                  }}
+                />
+              </div>
+
+              {memePreview && (
+                <img
+                  src={memePreview}
+                  alt="Meme preview"
+                  className="mt-3 sm:mt-4 w-full h-40 object-cover rounded-lg border border-white/10"
+                />
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-3 rounded-xl font-black text-sm transition-all"
+                >
+                  UPLOAD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMemeModal(false)}
                   className="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 px-6 py-3 rounded-xl font-black text-sm transition-all"
                 >
                   CANCEL

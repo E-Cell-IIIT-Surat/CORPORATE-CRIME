@@ -88,6 +88,9 @@ export const adminAPI = {
   createHint: (data) => api.post('/admin/hint', data),
   updateHint: (id, data) => api.put(`/admin/hint/${id}`, data),
   deleteHint: (id) => api.delete(`/admin/hint/${id}`),
+  getMemes: () => api.get('/admin/memes'),
+  createMeme: (data) => api.post('/admin/meme', data),
+  deleteMeme: (id) => api.delete(`/admin/meme/${id}`),
 };
 
 export default api;
