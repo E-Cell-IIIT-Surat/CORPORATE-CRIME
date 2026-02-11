@@ -20,6 +20,7 @@ import {
   getQualifiers,
   getAllTeams,
   resetTeam,
+  resetTeamPassword,
   getGameStatus,
   toggleGame,
   removePenalty,
@@ -71,6 +72,7 @@ router.post("/reject-team/:id", adminProtect, rejectTeam);
 router.get("/leaderboard", adminProtect, getLeaderboard);
 router.get("/qualifiers", adminProtect, getQualifiers);
 router.post("/reset-team/:id", adminProtect, resetTeam);
+router.post("/reset-team-password/:id", adminProtect, resetTeamPassword);
 router.post("/remove-penalty/:id", adminProtect, removePenalty);
 router.post("/adjust-time/:id", adminProtect, adjustTime);
 router.delete("/team/:id", adminProtect, deleteTeam);

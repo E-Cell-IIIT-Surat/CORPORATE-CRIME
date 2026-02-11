@@ -61,6 +61,7 @@ export const adminAPI = {
   rejectTeam: (id) => api.post(`/admin/reject-team/${id}`),
   getLeaderboard: () => api.get('/admin/leaderboard'),
   resetTeam: (id) => api.post(`/admin/reset-team/${id}`),
+  resetTeamPassword: (id, newPassword) => api.post(`/admin/reset-team-password/${id}`, { newPassword }),
   removePenalty: (id) => api.post(`/admin/remove-penalty/${id}`),
   adjustTime: (id, minutes) => api.post(`/admin/adjust-time/${id}`, { minutes }),
   deleteTeam: (id) => api.delete(`/admin/team/${id}`),

@@ -18,6 +18,7 @@ import {
   Square,
   ShieldAlert,
   Clock8,
+  KeyRound,
   ShieldCheck as ShieldIcon,
   FileQuestion,
   UserCheck,
@@ -161,6 +162,25 @@ const AdminDashboard = () => {
       fetchData();
     } catch (err) {
       toast.error('Reset failed.', { id: resetToast });
+    }
+  };
+
+  const handleResetTeamPassword = async (id, teamName) => {
+    const newPassword = window.prompt(`Set a new password for ${teamName}:`);
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+    if (!window.confirm(`Reset password for ${teamName}?`)) return;
+
+    const resetToast = toast.loading('Resetting team password...');
+    try {
+      await adminAPI.resetTeamPassword(id, newPassword);
+      toast.success('Team password reset.', { id: resetToast });
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Password reset failed.';
+      toast.error(msg, { id: resetToast });
     }
   };
 
@@ -803,6 +823,13 @@ const AdminDashboard = () => {
                                 <RefreshCw size={18} />
                               </button>
                               <button 
+                                onClick={() => handleResetTeamPassword(team._id, team.name)}
+                                className="p-2 hover:bg-blue-500/10 text-blue-400 rounded-lg transition-all"
+                                title="Reset Password"
+                              >
+                                <KeyRound size={18} />
+                              </button>
+                              <button 
                                 onClick={() => handleDeleteTeam(team._id)}
                                 className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-all"
                                 title="Delete Team"
@@ -836,12 +863,22 @@ const AdminDashboard = () => {
                             )}
                           </div>
                         </div>
-                        <button 
-                          onClick={() => handleResetTeam(team._id)}
-                          className="text-red-500 p-2 bg-red-500/10 rounded-lg"
-                        >
-                          <RefreshCw size={18} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleResetTeam(team._id)}
+                            className="text-red-500 p-2 bg-red-500/10 rounded-lg"
+                            title="Reset Progress"
+                          >
+                            <RefreshCw size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleResetTeamPassword(team._id, team.name)}
+                            className="text-blue-400 p-2 bg-blue-500/10 rounded-lg"
+                            title="Reset Password"
+                          >
+                            <KeyRound size={18} />
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4 pt-2">
                         <div className="bg-white/5 p-4 rounded-xl text-center">

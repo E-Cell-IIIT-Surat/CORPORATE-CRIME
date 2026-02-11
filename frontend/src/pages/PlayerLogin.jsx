@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { teamAPI } from '../api';
-import { Trophy, Shield, UserPlus, LogIn, Command } from 'lucide-react';
+import { Shield, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PlayerLogin = () => {
@@ -26,6 +26,7 @@ const PlayerLogin = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen w-screen flex items-center justify-center bg-[#020617] text-white p-3 sm:p-4 md:p-6 selection:bg-blue-500/30 overflow-x-hidden">
@@ -92,6 +93,7 @@ const PlayerLogin = () => {
               )}
             </button>
           </form>
+
 
           <div className="mt-8 sm:mt-10 md:mt-12 pt-6 sm:pt-8 border-t border-white/5 flex flex-col items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3 w-full">

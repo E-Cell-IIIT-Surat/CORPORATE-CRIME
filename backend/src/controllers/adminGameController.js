@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import Team from "../models/Team.js";
 import Location from "../models/Location.js";
 import Question from "../models/Question.js";
@@ -134,6 +135,25 @@ export const resetTeam = async (req, res) => {
     res.json({ message: "Team reset successfully. Progress cleared." });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const resetTeamPassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+
+    team.password = await bcrypt.hash(newPassword, 10);
+    await team.save();
+
+    res.json({ message: "Team password reset successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Password reset failed" });
   }
 };
 
