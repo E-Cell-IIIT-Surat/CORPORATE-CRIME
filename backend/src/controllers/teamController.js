@@ -20,6 +20,7 @@ const TOP_TEAM_NAMES = [
   "Mystery Incorporated",
   "RPM007",
   "Imposter hunters",
+  "Tez dimaag",
   "kingyoo"
 ];
 
