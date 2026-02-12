@@ -5,24 +5,34 @@ import generateToken from "../utils/generateToken.js";
 import GameSettings from "../models/GameSettings.js";
 
 const CATEGORIES = ["A", "B", "C", "D", "E"];
-const TOP_TEAM_NAMES = [
-  "Alpha analyst",
-  "El verdicto final",
-  "Special 26",
-  "The Case Closer",
-  "Shadow detective",
-  "Crime Investigators",
-  "Mystery brains",
-  "RPP Jasoos",
-  "Jetha Jasoos",
-  "Navrina",
-  "VecnaSlayers",
-  "Mystery Incorporated",
-  "RPM007",
-  "Imposter hunters",
-  "Tez dimaag",
-  "kingyoo"
-].map((name) => name.trim().toLowerCase());
+const normalizeTeamName = (value) =>
+  (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^a-z0-9 ]/g, "");
+
+const TOP_TEAM_NAMES = new Set(
+  [
+    "Alpha analyst",
+    "Alpha analysts",
+    "El Veredicto Final",
+    "Special_26",
+    "The Case Closer",
+    "Shadow detective",
+    "Crime Investigators",
+    "Mystery brains",
+    "RPP Jasoos",
+    "Jetha Jasoos",
+    "Navrina",
+    "VecnaSlayers",
+    "Mystery Incorporated",
+    "RPM007",
+    "Imposter hunters",
+    "Tez dimaag",
+    "kingyoo"
+  ].map((name) => normalizeTeamName(name))
+);
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -141,8 +151,8 @@ export const getMe = async (req, res) => {
     const team = req.team;
     const maxOrderDoc = await Location.findOne().sort({ order: -1 }).select("order");
     const totalSteps = maxOrderDoc ? maxOrderDoc.order : 0;
-    const normalizedTeamName = (team.name || "").trim().toLowerCase();
-    const isTop15Team = TOP_TEAM_NAMES.includes(normalizedTeamName);
+    const normalizedTeamName = normalizeTeamName(team.name);
+    const isTop15Team = TOP_TEAM_NAMES.has(normalizedTeamName);
     
     res.json({
       ...team.toObject(),
