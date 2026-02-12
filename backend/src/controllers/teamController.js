@@ -22,7 +22,7 @@ const TOP_TEAM_NAMES = [
   "Imposter hunters",
   "Tez dimaag",
   "kingyoo"
-];
+].map((name) => name.trim().toLowerCase());
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -141,7 +141,8 @@ export const getMe = async (req, res) => {
     const team = req.team;
     const maxOrderDoc = await Location.findOne().sort({ order: -1 }).select("order");
     const totalSteps = maxOrderDoc ? maxOrderDoc.order : 0;
-    const isTop15Team = TOP_TEAM_NAMES.includes(team.name);
+    const normalizedTeamName = (team.name || "").trim().toLowerCase();
+    const isTop15Team = TOP_TEAM_NAMES.includes(normalizedTeamName);
     
     res.json({
       ...team.toObject(),
