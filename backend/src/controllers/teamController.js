@@ -5,6 +5,23 @@ import generateToken from "../utils/generateToken.js";
 import GameSettings from "../models/GameSettings.js";
 
 const CATEGORIES = ["A", "B", "C", "D", "E"];
+const TOP_TEAM_NAMES = [
+  "Alpha analyst",
+  "El verdicto final",
+  "Special 26",
+  "The Case Closer",
+  "Shadow detective",
+  "Crime Investigators",
+  "Mystery brains",
+  "RPP Jasoos",
+  "Jetha Jasoos",
+  "Navrina",
+  "VecnaSlayers",
+  "Mystery Incorporated",
+  "RPM007",
+  "Imposter hunters",
+  "kingyoo"
+];
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -123,10 +140,12 @@ export const getMe = async (req, res) => {
     const team = req.team;
     const maxOrderDoc = await Location.findOne().sort({ order: -1 }).select("order");
     const totalSteps = maxOrderDoc ? maxOrderDoc.order : 0;
+    const isTop15Team = TOP_TEAM_NAMES.includes(team.name);
     
     res.json({
       ...team.toObject(),
-      totalSteps
+      totalSteps,
+      isTop15Team
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

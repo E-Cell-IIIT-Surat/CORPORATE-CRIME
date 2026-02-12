@@ -308,6 +308,79 @@ const PlayerDashboard = () => {
   );
 
   const isEventComplete = Number(team?.currentStep) >= 8;
+  const reportUrl = 'https://forms.gle/ck8BtFd4TzakEYjQ7';
+  const isTop15Team = Boolean(team?.isTop15Team);
+
+  if (isTop15Team) {
+    return (
+      <div
+        className="min-h-screen bg-[#020617] text-white flex items-center justify-center p-6"
+        style={{ fontFamily: '"Space Grotesk", "Segoe UI", sans-serif' }}
+      >
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&display=swap');`}</style>
+        <div className="relative w-full max-w-3xl">
+          <div className="absolute -top-24 right-8 w-64 h-64 bg-emerald-500/20 blur-[110px] rounded-full" />
+          <div className="absolute -bottom-24 left-6 w-72 h-72 bg-blue-500/20 blur-[120px] rounded-full" />
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: 'linear-gradient(90deg, rgba(16,185,129,0.15) 1px, transparent 1px), linear-gradient(180deg, rgba(16,185,129,0.15) 1px, transparent 1px)',
+              backgroundSize: '32px 32px'
+            }}
+          />
+          <div className="relative bg-black/75 border border-emerald-400/30 p-8 sm:p-12 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-emerald-400 to-transparent" />
+            <div className="flex flex-col items-center text-center gap-6">
+              <div className="w-24 h-24 bg-emerald-500/15 rounded-2xl flex items-center justify-center border-2 border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.35)]">
+                <Award size={48} className="text-emerald-400" />
+              </div>
+              <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.4em] text-emerald-300">
+                Final Honors
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white uppercase tracking-tight leading-tight">
+                Congratulations,{' '}
+                <span className="text-emerald-300">{team.name}</span>
+              </h2>
+              <p className="text-emerald-100/80 text-sm sm:text-base font-medium max-w-2xl">
+                You are officially in the Top 15. The mission is complete. Please submit your final report using the link below.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                <div className="bg-white/5 border border-emerald-400/20 rounded-xl p-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mb-1">Team</div>
+                  <div className="text-lg font-black text-white truncate">{team.name}</div>
+                </div>
+                <div className="bg-white/5 border border-emerald-400/20 rounded-xl p-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mb-1">Final Score</div>
+                  <div className="text-lg font-black text-white">{team.score?.toString().padStart(3, '0') || '000'}</div>
+                </div>
+                <div className="bg-white/5 border border-emerald-400/20 rounded-xl p-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300 mb-1">Status</div>
+                  <div className="text-lg font-black text-white">Top 15</div>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a
+                  href={reportUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 bg-emerald-400 text-black font-black px-6 py-3 rounded-lg uppercase tracking-wider shadow-lg hover:bg-emerald-300 transition-colors"
+                >
+                  Submit Report
+                  <ArrowRight size={18} />
+                </a>
+                <button
+                  onClick={handleLogout}
+                  className="bg-white/5 text-gray-300 font-black uppercase tracking-widest text-xs sm:text-sm px-6 py-3 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                >
+                  Exit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#020617] text-white w-full font-sans selection:bg-blue-500/30">
