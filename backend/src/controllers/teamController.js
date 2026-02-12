@@ -6,21 +6,25 @@ import GameSettings from "../models/GameSettings.js";
 
 const CATEGORIES = ["A", "B", "C", "D", "E"];
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export const registerTeam = async (req, res) => {
   try {
-    const { 
-      teamName, 
-      password, 
-      teamLeader, 
-      teamLeaderEmail, 
-      members 
+    const {
+      teamName,
+      password,
+      teamLeader,
+      teamLeaderEmail,
+      members
     } = req.body;
 
-    if (!teamName || !password || !teamLeader || !teamLeaderEmail) {
+    const normalizedTeamName = (teamName || "").trim();
+
+    if (!normalizedTeamName || !password || !teamLeader || !teamLeaderEmail) {
       return res.status(400).json({ message: "Please provide all required fields" });
     }
 
-    const existingTeam = await Team.findOne({ name: teamName });
+    const existingTeam = await Team.findOne({ name: normalizedTeamName });
     if (existingTeam) {
       return res.status(400).json({ message: "Team name already taken" });
     }
@@ -44,7 +48,7 @@ export const registerTeam = async (req, res) => {
 
     // 2. Create team with approval pending
     const team = await Team.create({
-      name: teamName,
+      name: normalizedTeamName,
       password: hashedPassword,
       category,
       teamLeader,
@@ -73,7 +77,10 @@ export const registerTeam = async (req, res) => {
 export const teamLogin = async (req, res) => {
   try {
     const { teamName, password } = req.body;
-    const team = await Team.findOne({ name: teamName });
+    const normalizedTeamName = (teamName || "").trim();
+    const team = await Team.findOne({
+      name: { $regex: `^${escapeRegex(normalizedTeamName)}$`, $options: "i" }
+    });
 
     if (!team) {
       return res.status(401).json({ message: "Team not found." });

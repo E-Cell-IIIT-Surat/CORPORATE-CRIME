@@ -45,9 +45,11 @@ export const scanQR = async (req, res) => {
       const timeSinceLastWrong = Date.now() - new Date(team.lastWrongScanTime).getTime();
       if (timeSinceLastWrong < SCAN_COOLDOWN) {
         const remaining = Math.ceil((SCAN_COOLDOWN - timeSinceLastWrong) / 1000);
+        const memeUrl = await getRandomMemeUrl();
         return res.status(429).json({
           message: "System Locked. Cooldown active.",
-          remainingSeconds: remaining
+          remainingSeconds: remaining,
+          memeUrl
         });
       }
     }
@@ -89,15 +91,17 @@ export const scanQR = async (req, res) => {
 
       return res.status(400).json({
         message: "Incorrect Location Sequence. Try the current objective.",
-        cooldown: SCAN_COOLDOWN / 1000,
+        remainingSeconds: SCAN_COOLDOWN / 1000,
         memeUrl
       });
     }
 
     // 3. Validate Category
     if (location.category !== "ALL" && location.category !== team.category) {
+      const memeUrl = await getRandomMemeUrl();
       return res.status(400).json({ 
-        message: `Division Mismatch. This node is restricted to Division ${location.category}.` 
+        message: `Division Mismatch. This node is restricted to Division ${location.category}.`,
+        memeUrl
       });
     }
 
